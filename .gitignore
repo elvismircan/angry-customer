@@ -1,0 +1,6 @@
+.idea/**
+target/**
+*.iml
+
+**__pycache__**
+**extracted_letter_images**
