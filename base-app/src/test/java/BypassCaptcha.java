@@ -69,6 +69,9 @@ public class BypassCaptcha {
             WebElement message = driver.findElement(By.name("textarea-144"));
             message.sendKeys("#ciaoless");
 
+            WebElement file = driver.findElement(By.name("file-784"));
+//            file.sendKeys("d:\\Projects_Personal\\angry-customer\\base-app\\special.zip");
+
             WebElement accept = driver.findElement(By.name("acceptance-172"));
             ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView();", accept);
             accept.click();
