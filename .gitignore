@@ -1,6 +1,6 @@
 .idea/**
-target/**
+**/target/**
 *.iml
 
-**__pycache__**
-**extracted_letter_images**
+**/__pycache__/**
+**/extracted_letter_images/**
