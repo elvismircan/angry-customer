@@ -1,7 +1,9 @@
 import org.apache.commons.lang3.RandomStringUtils;
-import org.junit.After;
-import org.junit.Before;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
 import org.openqa.selenium.By;
 import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.WebDriver;
@@ -16,10 +18,10 @@ import javax.script.ScriptEngine;
 import javax.script.ScriptEngineManager;
 import javax.script.ScriptException;
 import java.io.IOException;
-import java.text.SimpleDateFormat;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -27,14 +29,32 @@ import java.util.regex.Pattern;
 
 import static org.junit.Assert.assertTrue;
 
+@RunWith(Parameterized.class)
 public class BypassCaptcha {
 
-    private WebDriver driver;
+    private int runIndex;
 
-    private CaptchaResolver captchaResolver;
+    private static WebDriver driver;
 
-    @Before
-    public void setUp() {
+    private static CaptchaResolver captchaResolver;
+
+    public BypassCaptcha(int runIndex) {
+        this.runIndex = runIndex;
+    }
+
+    @Parameterized.Parameters
+    public static Collection data() {
+        int length = 1000;
+        List<Integer> index = new ArrayList<>();
+        for(int i = 0; i < length; i++ ) {
+            index.add(i);
+        }
+
+        return index;
+    }
+
+    @BeforeClass
+    public static void setUp() {
 
         ChromeOptions options = new ChromeOptions();
         options.addArguments("start-maximized");
@@ -54,136 +74,131 @@ public class BypassCaptcha {
         assertTrue(!result.isEmpty());
     }
 
-//    @Test
+    @Test
     public void testBypassContact() throws Exception {
-        SimpleDateFormat format = new SimpleDateFormat("yy/MM/dd HH:mm:ss");
+        Instant startTime = Instant.now();
 
-        for (int i=1;;i++) {
-            Instant startTime = Instant.now();
+        driver.get("https://www.amass.ro/contact_amass.html");
+        WebElement firstName = driver.findElement(By.name("text-458"));
+        firstName.sendKeys(randomNameGenerator());
 
-            driver.get("https://www.amass.ro/contact_amass.html");
-            WebElement firstName = driver.findElement(By.name("text-458"));
-            firstName.sendKeys("Les");
+        WebElement lastName = driver.findElement(By.name("text-610"));
+        lastName.sendKeys(randomNameGenerator());
 
-            WebElement lastName = driver.findElement(By.name("text-610"));
-            lastName.sendKeys("Bulan");
+        WebElement telephone = driver.findElement(By.name("tel-142"));
+        telephone.sendKeys(randomNumber());
 
-            WebElement telephone = driver.findElement(By.name("tel-142"));
-            telephone.sendKeys("0745001254");
+        WebElement email = driver.findElement(By.name("email-624"));
+        email.sendKeys(randomNameGenerator() + "@hi5.ro");
 
-            WebElement email = driver.findElement(By.name("email-624"));
-            email.sendKeys("les.bulan@hi5.ro");
+        WebElement message = driver.findElement(By.name("textarea-144"));
+        message.sendKeys("#ciaoless");
 
-            WebElement message = driver.findElement(By.name("textarea-144"));
-            message.sendKeys("#ciaoless");
-
-            WebElement file = driver.findElement(By.name("file-784"));
+        WebElement file = driver.findElement(By.name("file-784"));
 //            file.sendKeys("d:\\Projects_Personal\\angry-customer\\base-app\\special.zip");
 
-            WebElement accept = driver.findElement(By.name("acceptance-172"));
-            ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView();", accept);
-            accept.click();
+        WebElement accept = driver.findElement(By.name("acceptance-172"));
+        ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView();", accept);
+        accept.click();
 
-            WebElement captcha = driver.findElement(By.name("captcha-926"));
-            captcha.sendKeys(readCaptcha());
+        WebElement quiz = driver.findElement(By.cssSelector(".wpcf7-quiz"));
+        quiz.sendKeys(solveQuizCalculation());
 
-            WebElement submit = driver.findElement(By.cssSelector(".wpcf7-submit"));
-            submit.click();
+//        WebElement captcha = driver.findElement(By.name("captcha-926"));
+//        captcha.sendKeys(readCaptcha());
 
-            Wait<WebDriver> wait = new WebDriverWait(driver, 5000);
-            wait.until(driver1 -> String
-                    .valueOf(((JavascriptExecutor) driver1).executeScript("return document.readyState"))
-                    .equals("complete"));
+        WebElement submit = driver.findElement(By.cssSelector(".wpcf7-submit"));
+        submit.click();
 
-            WebElement submitMessage = driver.findElement(By.cssSelector(".screen-reader-response"));
-            submitMessage.isDisplayed();
-            String textMessage = submitMessage.getText();
+        Wait<WebDriver> wait = new WebDriverWait(driver, 5000);
+        wait.until(driver1 -> String
+                .valueOf(((JavascriptExecutor) driver1).executeScript("return document.readyState"))
+                .equals("complete"));
 
-            Instant endTime = Instant.now();
+        WebElement submitMessage = driver.findElement(By.cssSelector(".screen-reader-response"));
+        submitMessage.isDisplayed();
+        String textMessage = submitMessage.getText();
 
-            String out = "(took: " + getTimeDifference(startTime, endTime) + ") " + i + ": " + textMessage;
-            if (textMessage != null && !textMessage.contains("erori")) {
-                System.out.println("+ " + out);
-            } else {
-                System.out.println("- " + out);
-            }
+        Instant endTime = Instant.now();
+
+        String out = "(took: " + getTimeDifference(startTime, endTime) + ") " + runIndex + ": " + textMessage;
+        if (textMessage != null && !textMessage.contains("erori")) {
+            System.out.println("+ " + out);
+        } else {
+            System.out.println("- " + out);
         }
     }
 
     @Test
     public void testBypassQuote() throws Exception {
-        SimpleDateFormat format = new SimpleDateFormat("yy/MM/dd HH:mm:ss");
+        Instant startTime = Instant.now();
 
-        for (int i=1;;i++) {
-            Instant startTime = Instant.now();
+        driver.get("https://www.amass.ro/cere-o-cotatie-pentru-incalzirea-electrica");
+        Select domain = new Select(driver.findElement(By.name("domeniu")));
+        domain.selectByVisibleText("Protectie inghet");
 
-            driver.get("https://www.amass.ro/cere-o-cotatie-pentru-incalzirea-electrica");
-            Select domain = new Select(driver.findElement(By.name("domeniu")));
-            domain.selectByVisibleText("Protectie inghet");
+        WebElement firstName = driver.findElement(By.name("text-306"));
+        firstName.sendKeys(randomNameGenerator());
 
-            WebElement firstName = driver.findElement(By.name("text-306"));
-            firstName.sendKeys(randomNameGenerator());
+        WebElement lastName = driver.findElement(By.name("text-128"));
+        lastName.sendKeys(randomNameGenerator());
 
-            WebElement lastName = driver.findElement(By.name("text-128"));
-            lastName.sendKeys(randomNameGenerator());
+        WebElement telephone = driver.findElement(By.name("tel-91"));
+        telephone.sendKeys(randomNumber());
 
-            WebElement telephone = driver.findElement(By.name("tel-91"));
-            telephone.sendKeys(randomNumber());
+        WebElement email = driver.findElement(By.name("email-851"));
+        email.sendKeys(randomNameGenerator() + "@hi5.ro");
 
-            WebElement email = driver.findElement(By.name("email-851"));
-            email.sendKeys(randomNameGenerator() + "@hi5.ro");
+        WebElement surface = driver.findElement(By.name("text-475"));
+        surface.sendKeys("1000");
 
-            WebElement surface = driver.findElement(By.name("text-475"));
-            surface.sendKeys("1000");
+        Select destination = new Select(driver.findElement(By.name("destinatie")));
+        destination.selectByVisibleText("magazine");
 
-            Select destination = new Select(driver.findElement(By.name("destinatie")));
-            destination.selectByVisibleText("magazine");
+        Select floor = new Select(driver.findElement(By.name("pardoseala")));
+        floor.selectByVisibleText("granit");
 
-            Select floor = new Select(driver.findElement(By.name("pardoseala")));
-            floor.selectByVisibleText("granit");
+        Select heating = new Select(driver.findElement(By.name("incalzire")));
+        heating.selectByVisibleText("incalzire totala");
 
-            Select heating = new Select(driver.findElement(By.name("incalzire")));
-            heating.selectByVisibleText("incalzire totala");
+        WebElement city = driver.findElement(By.name("text-799"));
+        city.sendKeys("Vaslui");
 
-            WebElement city = driver.findElement(By.name("text-799"));
-            city.sendKeys("Vaslui");
+        WebElement message = driver.findElement(By.name("textarea-218"));
+        message.sendKeys("#blank");
 
-            WebElement message = driver.findElement(By.name("textarea-218"));
-            message.sendKeys("#blank");
-
-            WebElement file = driver.findElement(By.name("file-784"));
+        WebElement file = driver.findElement(By.name("file-784"));
 //            file.sendKeys("d:\\Projects_Personal\\angry-customer\\base-app\\special.zip");
 
-            WebElement quiz = driver.findElement(By.cssSelector(".wpcf7-quiz"));
-            quiz.sendKeys(solveQuizCalculation());
+        WebElement quiz = driver.findElement(By.cssSelector(".wpcf7-quiz"));
+        quiz.sendKeys(solveQuizCalculation());
 
 //            WebElement captcha = driver.findElement(By.name("captcha-926"));
 //            captcha.sendKeys(readCaptcha());
 
-            WebElement accept = driver.findElement(By.name("acceptance-611"));
-            ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView();", accept);
-            accept.click();
+        WebElement accept = driver.findElement(By.name("acceptance-611"));
+        ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView();", accept);
+        accept.click();
 
-            WebElement submit = driver.findElement(By.cssSelector(".wpcf7-submit"));
-            submit.click();
+        WebElement submit = driver.findElement(By.cssSelector(".wpcf7-submit"));
+        submit.click();
 
-            Wait<WebDriver> wait = new WebDriverWait(driver, 5000);
-            wait.until(driver1 -> String
-                    .valueOf(((JavascriptExecutor) driver1).executeScript("return document.readyState"))
-                    .equals("complete"));
+        Wait<WebDriver> wait = new WebDriverWait(driver, 5000);
+        wait.until(driver1 -> String
+                .valueOf(((JavascriptExecutor) driver1).executeScript("return document.readyState"))
+                .equals("complete"));
 
-            WebElement submitMessage = driver.findElement(By.cssSelector(".screen-reader-response"));
-            submitMessage.isDisplayed();
-            String textMessage = submitMessage.getText();
+        WebElement submitMessage = driver.findElement(By.cssSelector(".screen-reader-response"));
+        submitMessage.isDisplayed();
+        String textMessage = submitMessage.getText();
 
-            Instant endTime = Instant.now();
+        Instant endTime = Instant.now();
 
-            String out = "(took: " + getTimeDifference(startTime, endTime) + ") " + i + ": " + textMessage;
-            if (textMessage != null && !textMessage.contains("erori")) {
-                System.out.println("+ " + out);
-            } else {
-                System.out.println("- " + out);
-            }
+        String out = "(took: " + getTimeDifference(startTime, endTime) + ") " + runIndex + ": " + textMessage;
+        if (textMessage != null && !textMessage.contains("erori")) {
+            System.out.println("+ " + out);
+        } else {
+            System.out.println("- " + out);
         }
     }
 
@@ -235,8 +250,8 @@ public class BypassCaptcha {
         return String.valueOf(engine.eval(question.substring(0, question.length() - 2)));
     }
 
-    @After
-    public void tearDown() throws Exception {
+    @AfterClass
+    public static void tearDown() throws Exception {
         driver.quit();
     }
 }
