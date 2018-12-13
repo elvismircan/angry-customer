@@ -12,10 +12,18 @@ import org.openqa.selenium.support.ui.Select;
 import org.openqa.selenium.support.ui.Wait;
 import org.openqa.selenium.support.ui.WebDriverWait;
 
+import javax.script.ScriptEngine;
+import javax.script.ScriptEngineManager;
+import javax.script.ScriptException;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static org.junit.Assert.assertTrue;
 
@@ -146,12 +154,15 @@ public class BypassCaptcha {
             WebElement file = driver.findElement(By.name("file-784"));
 //            file.sendKeys("d:\\Projects_Personal\\angry-customer\\base-app\\special.zip");
 
+            WebElement quiz = driver.findElement(By.cssSelector(".wpcf7-quiz"));
+            quiz.sendKeys(solveQuizCalculation());
+
+//            WebElement captcha = driver.findElement(By.name("captcha-926"));
+//            captcha.sendKeys(readCaptcha());
+
             WebElement accept = driver.findElement(By.name("acceptance-611"));
             ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView();", accept);
             accept.click();
-
-            WebElement captcha = driver.findElement(By.name("captcha-926"));
-            captcha.sendKeys(readCaptcha());
 
             WebElement submit = driver.findElement(By.cssSelector(".wpcf7-submit"));
             submit.click();
@@ -195,6 +206,33 @@ public class BypassCaptcha {
 
     public String randomNumber() {
         return "0745" + RandomStringUtils.randomNumeric(6);
+    }
+
+    public String solveQuiz() {
+        String question = driver.findElement(By.cssSelector(".wpcf7-quiz-label")).getText();
+
+        String regex ="(\\d+)";
+        Matcher matcher = Pattern.compile( regex ).matcher( question);
+
+        List<Integer> numbers = new ArrayList<Integer>();
+
+        while (matcher.find()) {
+            numbers.add(Integer.valueOf(matcher.group()));
+        }
+        Collections.sort(numbers);
+
+        return String.valueOf(numbers.get(0));
+    }
+
+    public String solveQuizCalculation() throws ScriptException {
+        String question = driver.findElement(By.cssSelector(".wpcf7-quiz-label")).getText();
+        question = question.replace("x", "*" );
+
+        System.out.println(question);
+
+        ScriptEngineManager script = new ScriptEngineManager();
+        ScriptEngine engine = script.getEngineByName("JavaScript");
+        return String.valueOf(engine.eval(question.substring(0, question.length() - 2)));
     }
 
     @After
