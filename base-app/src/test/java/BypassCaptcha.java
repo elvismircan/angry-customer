@@ -1,3 +1,4 @@
+import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -45,7 +46,7 @@ public class BypassCaptcha {
         assertTrue(!result.isEmpty());
     }
 
-    @Test
+//    @Test
     public void testBypassContact() throws Exception {
         SimpleDateFormat format = new SimpleDateFormat("yy/MM/dd HH:mm:ss");
 
@@ -113,16 +114,16 @@ public class BypassCaptcha {
             domain.selectByVisibleText("Protectie inghet");
 
             WebElement firstName = driver.findElement(By.name("text-306"));
-            firstName.sendKeys("Les");
+            firstName.sendKeys(randomNameGenerator());
 
             WebElement lastName = driver.findElement(By.name("text-128"));
-            lastName.sendKeys("Bulan");
+            lastName.sendKeys(randomNameGenerator());
 
             WebElement telephone = driver.findElement(By.name("tel-91"));
-            telephone.sendKeys("0745001254");
+            telephone.sendKeys(randomNumber());
 
             WebElement email = driver.findElement(By.name("email-851"));
-            email.sendKeys("les.bulan@hi5.ro");
+            email.sendKeys(randomNameGenerator() + "@hi5.ro");
 
             WebElement surface = driver.findElement(By.name("text-475"));
             surface.sendKeys("1000");
@@ -185,6 +186,15 @@ public class BypassCaptcha {
         String src = img.getAttribute("src");
 
         return captchaResolver.readCaptcha(src);
+    }
+
+
+    public String randomNameGenerator() {
+        return RandomStringUtils.random(7, true, false);
+    }
+
+    public String randomNumber() {
+        return "0745" + RandomStringUtils.randomNumeric(6);
     }
 
     @After
