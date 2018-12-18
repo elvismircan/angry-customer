@@ -1,4 +1,5 @@
 import org.apache.commons.lang3.RandomStringUtils;
+import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -16,6 +17,7 @@ import org.openqa.selenium.support.ui.Wait;
 import org.openqa.selenium.support.ui.WebDriverWait;
 
 import javax.script.ScriptException;
+import java.io.File;
 import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
@@ -56,14 +58,21 @@ public class BypassCaptcha {
 
         ChromeOptions options = new ChromeOptions();
         options.addArguments("start-maximized");
+        options.addArguments("disable-infobars");
         options.addArguments("--headless");
-        options.addArguments("incognito");
+//        options.addArguments("incognito");
+        options.addExtensions(new File("src/test/resources/captcha-clicker.crx"));
 
         System.setProperty("webdriver.chrome.driver", "src/test/resources/chromedriver.exe");
 
         driver = new ChromeDriver(options);
         captchaResolver = new CaptchaResolver();
         quizzResolver = new QuizzResolver();
+    }
+
+    @After
+    public void after() throws InterruptedException {
+        Thread.sleep(3000);
     }
 
 //    @Test
@@ -109,8 +118,10 @@ public class BypassCaptcha {
 
         Wait<WebDriver> wait = new WebDriverWait(driver, 5000);
 
-        ((JavascriptExecutor) driver).executeScript("return document.getElementsByClassName('g-recaptcha')[0].remove();");
-        wait.until(ExpectedConditions.numberOfElementsToBe(By.className(".g-recaptcha"), 0));
+//        ((JavascriptExecutor) driver).executeScript("return document.getElementsByClassName('g-recaptcha')[0].remove();");
+//        wait.until(ExpectedConditions.numberOfElementsToBe(By.className(".g-recaptcha"), 0));
+
+        Thread.sleep(4000);
 
         WebElement submit = driver.findElement(By.id("send-message"));
         wait.until(ExpectedConditions.elementToBeClickable(submit));
