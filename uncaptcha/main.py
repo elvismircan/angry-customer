@@ -68,10 +68,11 @@ def wait_between(a, b):
 
 ############################## IMAGE RECAPTCHA ##############################
 TASK_PATH = "images\\taskg"
-def should_click_image(img, x1, y1, store):
-    ans = ris.parse_clarifai(ris.clarifai(img))
+def should_click_image(img, x1, y1, store, classifier):
+    # ans = ris.parse_clarifai(ris.clarifai(img))
+    ans = image.predict(img, classifier)
     logging.debug(ans)
-    decision = "car" in ans or "vehicle" in ans  or "truck" in ans
+    decision = classifier in ans
     store[(x1,y1)] = decision
     logging.debug(store)
     return decision
@@ -99,11 +100,11 @@ def click_tiles(driver, coords):
         new_files[(x, y)] = (new_path)
     return new_files
 
-def handle_queue(to_solve_queue, coor_dict):
+def handle_queue(to_solve_queue, coor_dict, classifier):
     ts = []
     for (x,y) in to_solve_queue:
         image_file = to_solve_queue[(x, y)]
-        t = threading.Thread(target=should_click_image, args=(image_file, x, y,coor_dict))        
+        t = threading.Thread(target=should_click_image, args=(image_file, x, y,coor_dict, classifier))
         ts.append(t)
         t.start()
     for t in ts:
@@ -122,6 +123,7 @@ def image_recaptcha(driver):
             if not target: # find the target
                 target = soup.findAll("div", {"class": "rc-imageselect-desc-no-canonical"})
             target = target[0].findAll("strong")[0].get_text()
+            print ("Classifier is: " + target);
 
             #  Compute shape of captcha & target  #
             trs = table.findAll("tr")
@@ -160,7 +162,7 @@ def image_recaptcha(driver):
         logging.debug(to_solve_queue)
         
         coor_dict = {}
-        handle_queue(to_solve_queue, coor_dict)  # multithread builds out where to click
+        handle_queue(to_solve_queue, coor_dict, target)  # multithread builds out where to click
         logging.debug(coor_dict)
         #os.system("rm "+TASK_PATH+"/full_payload.jpeg")
         
@@ -177,7 +179,7 @@ def image_recaptcha(driver):
                 if to_click:
                     to_click_tiles.append((x,y)) # collect all the tiles to click in this round
             new_files = click_tiles(driver, to_click_tiles)
-            handle_queue(new_files, coor_dict)
+            handle_queue(new_files, coor_dict, target)
             continue_solving = False
             for to_click_tile in coor_dict.values():
                 continue_solving = to_click_tile or continue_solving
