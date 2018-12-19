@@ -1,0 +1,1 @@
+For Linux use **convert** command
