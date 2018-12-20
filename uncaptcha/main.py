@@ -166,7 +166,7 @@ def image_recaptcha(driver):
         os.system("mv captcha.jpeg "+TASK_PATH+"/full_payload.jpeg")
         os.system("copy "+TASK_PATH+"\\full_payload.jpeg "+CAPTCHA_PATH)
         os.rename(CAPTCHA_PATH+"/full_payload.jpeg", CAPTCHA_PATH+"/"+str(uuid.uuid1())+".jpeg")
-        os.system("magick "+TASK_PATH+"/full_payload.jpeg -crop "+str(max_width)+"x"+str(max_width)+"@ +repage +adjoin "+TASK_PATH+"/output_%03d.jpg")
+        os.system("magick "+TASK_PATH+"/full_payload.jpeg -crop "+str(max_width)+"x"+str(max_height)+"@ +repage +adjoin "+TASK_PATH+"/output_%03d.jpg")
 
         #  build queue of files
         to_solve_queue = {}
