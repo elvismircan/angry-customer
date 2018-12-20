@@ -94,7 +94,7 @@ def click_tiles(driver, coords):
         print("[*] Going to click {} {}".format(roundX,roundY))
         tile1 = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.XPATH, '//div[@id="rc-imageselect-target"]/table/tbody/tr[{0}]/td[{1}]'.format(roundX, roundY))))
         orig_srcs[(x, y)] = driver.find_element(By.XPATH, "//*[@id=\"rc-imageselect-target\"]/table/tbody/tr[{}]/td[{}]/div/div[1]/img".format(roundX,roundY)).get_attribute("src")
-        new_srcs[(x, y)] = orig_srcs[(x, y)] # to check if image has changed 
+        new_srcs[(x, y)] = orig_srcs[(x, y)] # to check if image has changed
         tile1.click()
         wait_between(0.1, 0.5)
 
@@ -167,7 +167,7 @@ def image_recaptcha(driver):
         os.system("copy "+TASK_PATH+"\\full_payload.jpeg "+CAPTCHA_PATH)
         os.rename(CAPTCHA_PATH+"/full_payload.jpeg", CAPTCHA_PATH+"/"+str(uuid.uuid1())+".jpeg")
         os.system("magick "+TASK_PATH+"/full_payload.jpeg -crop "+str(max_width)+"x"+str(max_width)+"@ +repage +adjoin "+TASK_PATH+"/output_%03d.jpg")
-        'convert images/taskg/full_payload.jpeg -crop 2x2@ +repage +adjoin images/taskg/output_%03d.jpg'
+
         #  build queue of files
         to_solve_queue = {}
 
