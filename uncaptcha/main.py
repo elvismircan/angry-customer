@@ -67,6 +67,7 @@ def wait_between(a, b):
 
 
 ############################## IMAGE RECAPTCHA ##############################
+CAPTCHA_PATH = "images\\captchas"
 TASK_PATH = "images\\taskg"
 def should_click_image(img, x1, y1, store, classifier):
     # ans = ris.parse_clarifai(ris.clarifai(img))
@@ -88,9 +89,11 @@ def should_click_image(img, x1, y1, store, classifier):
 def click_tiles(driver, coords):
     orig_srcs, new_srcs = {}, {}
     for (x, y) in coords:
+        roundX = round(x)
+        roundY = round(y)
         logging.debug("[*] Going to click {} {}".format(x,y))
-        tile1 = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.XPATH, '//div[@id="rc-imageselect-target"]/table/tbody/tr[{0}]/td[{1}]'.format(x, y))))
-        orig_srcs[(x, y)] = driver.find_element(By.XPATH, "//*[@id=\"rc-imageselect-target\"]/table/tbody/tr[{}]/td[{}]/div/div[1]/img".format(x,y)).get_attribute("src")
+        tile1 = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.XPATH, '//div[@id="rc-imageselect-target"]/table/tbody/tr[{0}]/td[{1}]'.format(roundX, roundY))))
+        orig_srcs[(x, y)] = driver.find_element(By.XPATH, "//*[@id=\"rc-imageselect-target\"]/table/tbody/tr[{}]/td[{}]/div/div[1]/img".format(roundX,roundY)).get_attribute("src")
         new_srcs[(x, y)] = orig_srcs[(x, y)] # to check if image has changed 
         tile1.click()
         wait_between(0.1, 0.5)
@@ -98,11 +101,13 @@ def click_tiles(driver, coords):
     logging.debug("[*] Downloading new inbound image...")
     new_files = {}
     for (x, y) in orig_srcs:
+        roundX = round(x)
+        roundY = round(y)
         while new_srcs[(x, y)] == orig_srcs[(x, y)]:
-            new_srcs[(x, y)] = driver.find_element(By.XPATH, "//*[@id=\"rc-imageselect-target\"]/table/tbody/tr[{}]/td[{}]/div/div[1]/img".format(x,y)).get_attribute("src")
+            new_srcs[(x, y)] = driver.find_element(By.XPATH, "//*[@id=\"rc-imageselect-target\"]/table/tbody/tr[{}]/td[{}]/div/div[1]/img".format(roundX,roundY)).get_attribute("src")
             time.sleep(0.5)
         urllib.request.urlretrieve(new_srcs[(x, y)], "captcha.jpeg")
-        new_path = TASK_PATH+"/new_output{}{}.jpeg".format(x, y)
+        new_path = TASK_PATH+"\\new_output{}{}.jpeg".format(roundX, roundY)
         os.system("mv captcha.jpeg "+new_path)
         new_files[(x, y)] = (new_path)
     return new_files
@@ -117,7 +122,13 @@ def handle_queue(to_solve_queue, coor_dict, classifier):
     for t in ts:
         t.join()
 
+def cleanup():
+    for root, dirs, files in os.walk(TASK_PATH):
+        for file in files:
+            os.remove(os.path.join(root, file))
+
 def image_recaptcha(driver):
+    cleanup()
     continue_solving = True
     while continue_solving:
         willing_to_solve = False
@@ -153,8 +164,8 @@ def image_recaptcha(driver):
         #  Pull down captcha to attack and organize directory structure
         urllib.request.urlretrieve(payload, "captcha.jpeg")
         os.system("mv captcha.jpeg "+TASK_PATH+"/full_payload.jpeg")
-        os.system("copy "+TASK_PATH+"\\full_payload.jpeg "+TASK_PATH+"\\captchas")
-        os.rename(TASK_PATH+"/captchas/full_payload.jpeg", TASK_PATH+"/captchas/"+str(uuid.uuid1())+".jpeg")
+        os.system("copy "+TASK_PATH+"\\full_payload.jpeg "+CAPTCHA_PATH)
+        os.rename(CAPTCHA_PATH+"/full_payload.jpeg", CAPTCHA_PATH+"/"+str(uuid.uuid1())+".jpeg")
         os.system("magick "+TASK_PATH+"/full_payload.jpeg -crop "+str(max_width)+"x"+str(max_width)+"@ +repage +adjoin "+TASK_PATH+"/output_%03d.jpg")
         'convert images/taskg/full_payload.jpeg -crop 2x2@ +repage +adjoin images/taskg/output_%03d.jpg'
         #  build queue of files
