@@ -72,10 +72,17 @@ def should_click_image(img, x1, y1, store, classifier):
     # ans = ris.parse_clarifai(ris.clarifai(img))
     ans = image.predict(img, classifier)
     logging.debug(ans)
-    decision = classifier in ans
-    store[(x1,y1)] = decision
-    logging.debug(store)
-    return decision
+
+    words = classifier.split(' ')
+    for elem in ans:
+        for word in words:
+            if word.lower() in elem.lower() or elem.lower() in word.lower():
+                decision = True
+                store[(x1,y1)] = True
+                logging.debug(store)
+                return decision
+
+    return False
 
 
 def click_tiles(driver, coords):
