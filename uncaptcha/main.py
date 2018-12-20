@@ -91,7 +91,7 @@ def click_tiles(driver, coords):
     for (x, y) in coords:
         roundX = round(x)
         roundY = round(y)
-        logging.debug("[*] Going to click {} {}".format(x,y))
+        print("[*] Going to click {} {}".format(roundX,roundY))
         tile1 = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.XPATH, '//div[@id="rc-imageselect-target"]/table/tbody/tr[{0}]/td[{1}]'.format(roundX, roundY))))
         orig_srcs[(x, y)] = driver.find_element(By.XPATH, "//*[@id=\"rc-imageselect-target\"]/table/tbody/tr[{}]/td[{}]/div/div[1]/img".format(roundX,roundY)).get_attribute("src")
         new_srcs[(x, y)] = orig_srcs[(x, y)] # to check if image has changed 
@@ -170,10 +170,18 @@ def image_recaptcha(driver):
         'convert images/taskg/full_payload.jpeg -crop 2x2@ +repage +adjoin images/taskg/output_%03d.jpg'
         #  build queue of files
         to_solve_queue = {}
-        idx = 0 
-        for f in [TASK_PATH+"\\"+f for f in os.listdir(TASK_PATH) if "output_" in f]:
-            y = idx % 3 + 1  # making coordinates 1 indexed to match xpaths 
-            x = idx / 3 + 1
+
+        idx = 0
+        files = [TASK_PATH+"\\"+f for f in os.listdir(TASK_PATH) if "output_" in f]
+        for mod in range(2,5):
+            if len(files) % mod == 0:
+                if (mod * mod == len(files)):
+                    matrix = mod
+                    break
+
+        for f in files:
+            y = idx % matrix + 1  # making coordinates 1 indexed to match xpaths
+            x = idx / matrix + 1
             to_solve_queue[(x, y)] = f
             idx += 1
         
