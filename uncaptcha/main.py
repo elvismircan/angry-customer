@@ -103,13 +103,18 @@ def click_tiles(driver, coords):
     for (x, y) in orig_srcs:
         roundX = round(x)
         roundY = round(y)
-        while new_srcs[(x, y)] == orig_srcs[(x, y)]:
+        count = 0 #avoiding infinite loop if no new image was loaded on click
+        while new_srcs[(x, y)] == orig_srcs[(x, y)] and count < 3:
             new_srcs[(x, y)] = driver.find_element(By.XPATH, "//*[@id=\"rc-imageselect-target\"]/table/tbody/tr[{}]/td[{}]/div/div[1]/img".format(roundX,roundY)).get_attribute("src")
             time.sleep(0.5)
-        urllib.request.urlretrieve(new_srcs[(x, y)], "captcha.jpeg")
-        new_path = TASK_PATH+"\\new_output{}{}.jpeg".format(roundX, roundY)
-        os.system("mv captcha.jpeg "+new_path)
-        new_files[(x, y)] = (new_path)
+            count += 1
+
+            if new_srcs[(x, y)] == orig_srcs[(x, y)]:
+                urllib.request.urlretrieve(new_srcs[(x, y)], "captcha.jpeg")
+                new_path = TASK_PATH+"\\new_output{}{}.jpeg".format(roundX, roundY)
+                os.system("mv captcha.jpeg "+new_path)
+                new_files[(x, y)] = (new_path)
+
     return new_files
 
 def handle_queue(to_solve_queue, coor_dict, classifier):
@@ -173,15 +178,9 @@ def image_recaptcha(driver):
 
         idx = 0
         files = [TASK_PATH+"\\"+f for f in os.listdir(TASK_PATH) if "output_" in f]
-        for mod in range(2,5):
-            if len(files) % mod == 0:
-                if (mod * mod == len(files)):
-                    matrix = mod
-                    break
-
         for f in files:
-            y = idx % matrix + 1  # making coordinates 1 indexed to match xpaths
-            x = idx / matrix + 1
+            y = idx % max_height + 1  # making coordinates 1 indexed to match xpaths
+            x = idx / max_width + 1
             to_solve_queue[(x, y)] = f
             idx += 1
         
@@ -201,7 +200,6 @@ def image_recaptcha(driver):
             for coords in coor_dict:
                 to_click = coor_dict[coords]
                 x, y = coords
-                body = driver.find_element(By.CSS_SELECTOR, "body").get_attribute('innerHTML').encode("utf8")
                 if to_click:
                     to_click_tiles.append((x,y)) # collect all the tiles to click in this round
             new_files = click_tiles(driver, to_click_tiles)
