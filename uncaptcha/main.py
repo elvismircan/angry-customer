@@ -19,6 +19,7 @@ import audio
 import threading
 import argparse
 import uuid
+import math
 import image
 import ris
 
@@ -69,7 +70,7 @@ def wait_between(a, b):
 ############################## IMAGE RECAPTCHA ##############################
 CAPTCHA_PATH = "images\\captchas"
 TASK_PATH = "images\\taskg"
-def should_click_image(img, x1, y1, store, classifier):
+def should_click_image(img, x, y, store, classifier):
     # ans = ris.parse_clarifai(ris.clarifai(img))
     ans = image.predict(img, classifier)
     logging.debug(ans)
@@ -77,9 +78,9 @@ def should_click_image(img, x1, y1, store, classifier):
     words = classifier.split(' ')
     for elem in ans:
         for word in words:
-            if word.lower() in elem.lower() or elem.lower() in word.lower():
+            if len(word) > 2 and (word.lower() in elem.lower() or elem.lower() in word.lower()):
                 decision = True
-                store[(x1,y1)] = True
+                store[(x,y)] = True
                 logging.debug(store)
                 return decision
 
@@ -89,11 +90,9 @@ def should_click_image(img, x1, y1, store, classifier):
 def click_tiles(driver, coords):
     orig_srcs, new_srcs = {}, {}
     for (x, y) in coords:
-        roundX = round(x)
-        roundY = round(y)
-        print("[*] Going to click {} {}".format(roundX,roundY))
-        tile1 = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.XPATH, '//div[@id="rc-imageselect-target"]/table/tbody/tr[{0}]/td[{1}]'.format(roundX, roundY))))
-        orig_srcs[(x, y)] = driver.find_element(By.XPATH, "//*[@id=\"rc-imageselect-target\"]/table/tbody/tr[{}]/td[{}]/div/div[1]/img".format(roundX,roundY)).get_attribute("src")
+        print("[*] Going to click {} {}".format(x,y))
+        tile1 = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.XPATH, "//*[@id=\"rc-imageselect-target\"]/table/tbody/tr[{}]/td[{}]".format(x, y))))
+        orig_srcs[(x, y)] = driver.find_element(By.XPATH, "//*[@id=\"rc-imageselect-target\"]/table/tbody/tr[{}]/td[{}]/div/div[1]/img".format(x,y)).get_attribute("src")
         new_srcs[(x, y)] = orig_srcs[(x, y)] # to check if image has changed
         tile1.click()
         wait_between(0.1, 0.5)
@@ -101,19 +100,18 @@ def click_tiles(driver, coords):
     logging.debug("[*] Downloading new inbound image...")
     new_files = {}
     for (x, y) in orig_srcs:
-        roundX = round(x)
-        roundY = round(y)
-        count = 0 #avoiding infinite loop if no new image was loaded on click
-        while new_srcs[(x, y)] == orig_srcs[(x, y)] and count < 3:
-            new_srcs[(x, y)] = driver.find_element(By.XPATH, "//*[@id=\"rc-imageselect-target\"]/table/tbody/tr[{}]/td[{}]/div/div[1]/img".format(roundX,roundY)).get_attribute("src")
-            time.sleep(0.5)
+
+        count = 0
+        while new_srcs[(x, y)] == orig_srcs[(x, y)] and count < 10:
+            new_srcs[(x, y)] = driver.find_element(By.XPATH, "//*[@id=\"rc-imageselect-target\"]/table/tbody/tr[{}]/td[{}]/div/div[1]/img".format(x, y)).get_attribute("src")
+            wait_between(0.1, 0.5)
             count += 1
 
-            if new_srcs[(x, y)] == orig_srcs[(x, y)]:
-                urllib.request.urlretrieve(new_srcs[(x, y)], "captcha.jpeg")
-                new_path = TASK_PATH+"\\new_output{}{}.jpeg".format(roundX, roundY)
-                os.system("mv captcha.jpeg "+new_path)
-                new_files[(x, y)] = (new_path)
+        if new_srcs[(x, y)] != orig_srcs[(x, y)]:
+            urllib.request.urlretrieve(new_srcs[(x, y)], "captcha.jpeg")
+            new_path = TASK_PATH+"\\new_output{}{}.jpeg".format(x, y)
+            os.system("mv captcha.jpeg "+new_path)
+            new_files[(x, y)] = (new_path)
 
     return new_files
 
@@ -179,8 +177,8 @@ def image_recaptcha(driver):
         idx = 0
         files = [TASK_PATH+"\\"+f for f in os.listdir(TASK_PATH) if "output_" in f]
         for f in files:
-            y = idx % max_height + 1  # making coordinates 1 indexed to match xpaths
-            x = idx / max_width + 1
+            y = math.floor(idx % max_height + 1)  # making coordinates 1 indexed to match xpaths
+            x = math.floor(idx / max_width + 1)
             to_solve_queue[(x, y)] = f
             idx += 1
         
@@ -203,10 +201,12 @@ def image_recaptcha(driver):
                 if to_click:
                     to_click_tiles.append((x,y)) # collect all the tiles to click in this round
             new_files = click_tiles(driver, to_click_tiles)
-            handle_queue(new_files, coor_dict, target)
-            continue_solving = False
-            for to_click_tile in coor_dict.values():
-                continue_solving = to_click_tile or continue_solving
+            if new_files:
+                for (x,y) in coor_dict:
+                    coor_dict[(x,y)] = False
+                handle_queue(new_files, coor_dict, target)
+            else:
+                continue_solving = False
         driver.find_element(By.ID, "recaptcha-verify-button").click()
         wait_between(0.2, 0.5)
         if driver.find_element_by_class_name("rc-imageselect-incorrect-response").get_attribute("style") != "display: none":
