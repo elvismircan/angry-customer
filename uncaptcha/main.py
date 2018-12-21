@@ -72,29 +72,42 @@ CAPTCHA_PATH = "images\\captchas"
 TASK_PATH = "images\\taskg"
 def should_click_image(img, x, y, store, classifier):
     # ans = ris.parse_clarifai(ris.clarifai(img))
-    ans = image.predict(img, classifier)
+    ans = image.predict(os.path.abspath(img))
     logging.debug(ans)
+
+    if classifier.lower() == "crosswalks":
+        if "Zebra Crossing" in ans or "Intersection" in ans or "Road" in ans or "Path" in ans or "Street" in ans:
+            store[(x,y)] = True
+            logging.debug(store)
+            return True
 
     words = classifier.split(' ')
     for elem in ans:
         for word in words:
             if len(word) > 2 and (word.lower() in elem.lower() or elem.lower() in word.lower()):
-                decision = True
                 store[(x,y)] = True
                 logging.debug(store)
-                return decision
+                return True
 
     return False
 
 
+def trigger_click(element):
+    if element.get_attribute("style") != "display: none":
+        element.click()
+        wait_between(0.1, 0.5)
+        return True
+
+
 def click_tiles(driver, coords):
     orig_srcs, new_srcs = {}, {}
+    is_click = False
     for (x, y) in coords:
         print("[*] Going to click {} {}".format(x,y))
-        tile1 = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.XPATH, "//*[@id=\"rc-imageselect-target\"]/table/tbody/tr[{}]/td[{}]".format(x, y))))
+        tile = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.XPATH, "//*[@id=\"rc-imageselect-target\"]/table/tbody/tr[{}]/td[{}]".format(x, y))))
         orig_srcs[(x, y)] = driver.find_element(By.XPATH, "//*[@id=\"rc-imageselect-target\"]/table/tbody/tr[{}]/td[{}]/div/div[1]/img".format(x,y)).get_attribute("src")
         new_srcs[(x, y)] = orig_srcs[(x, y)] # to check if image has changed
-        tile1.click()
+        tile.click()
         wait_between(0.1, 0.5)
 
     logging.debug("[*] Downloading new inbound image...")
@@ -104,7 +117,7 @@ def click_tiles(driver, coords):
         count = 0
         while new_srcs[(x, y)] == orig_srcs[(x, y)] and count < 10:
             new_srcs[(x, y)] = driver.find_element(By.XPATH, "//*[@id=\"rc-imageselect-target\"]/table/tbody/tr[{}]/td[{}]/div/div[1]/img".format(x, y)).get_attribute("src")
-            wait_between(0.1, 0.5)
+            sleep(0.2)
             count += 1
 
         if new_srcs[(x, y)] != orig_srcs[(x, y)]:
@@ -124,6 +137,7 @@ def handle_queue(to_solve_queue, coor_dict, classifier):
         t.start()
     for t in ts:
         t.join()
+    return len(ts)
 
 def cleanup():
     for root, dirs, files in os.walk(TASK_PATH):
@@ -131,38 +145,29 @@ def cleanup():
             os.remove(os.path.join(root, file))
 
 def image_recaptcha(driver):
-    cleanup()
     continue_solving = True
     while continue_solving:
-        willing_to_solve = False
-        while not willing_to_solve:
-            wait_between(0.2, 0.5)
-            body = driver.find_element(By.CSS_SELECTOR, "body").get_attribute('innerHTML').encode("utf8")
-            soup = BeautifulSoup(body, 'html.parser')
-            table = soup.findAll("div", {"id": "rc-imageselect-target"})[0]
-            target = soup.findAll("div", {"class": "rc-imageselect-desc"})
-            if not target: # find the target
-                target = soup.findAll("div", {"class": "rc-imageselect-desc-no-canonical"})
-            target = target[0].findAll("strong")[0].get_text()
-            print ("Classifier is: " + target);
+        cleanup()
+        sleep(2)
 
-            #  Compute shape of captcha & target  #
-            trs = table.findAll("tr")
-            max_height = len(trs)
-            max_width = 0
-            for tr in trs:
-                imgs = tr.findAll("img")
-                payload = imgs[0]["src"]
-                if len(imgs) > max_width:
-                    max_width = len(imgs)
+        body = driver.find_element(By.CSS_SELECTOR, "body").get_attribute('innerHTML').encode("utf8")
+        soup = BeautifulSoup(body, 'html.parser')
+        table = soup.findAll("div", {"id": "rc-imageselect-target"})[0]
+        target = soup.findAll("div", {"class": "rc-imageselect-desc"})
+        if not target: # find the target
+            target = soup.findAll("div", {"class": "rc-imageselect-desc-no-canonical"})
+        target = target[0].findAll("strong")[0].get_text()
+        print ("Classifier is: " + target);
 
-            #  if its not easy, ask for a new one
-            if max_height > 4 or max_width > 4: # lets get an easier one
-                reload_captcha = driver.find_element(By.XPATH, "//*[@id=\"recaptcha-reload-button\"]")
-                reload_captcha.click()
-                wait_between(0.2, 0.5)
-            else:
-                willing_to_solve = True
+        #  Compute shape of captcha & target  #
+        trs = table.findAll("tr")
+        max_height = len(trs)
+        max_width = 0
+        for tr in trs:
+            imgs = tr.findAll("img")
+            payload = imgs[0]["src"]
+            if len(imgs) > max_width:
+                max_width = len(imgs)
         
         #  Pull down captcha to attack and organize directory structure
         urllib.request.urlretrieve(payload, "captcha.jpeg")
@@ -192,27 +197,35 @@ def image_recaptcha(driver):
         driver.switch_to.default_content()  
         iframe = driver.find_element(By.XPATH, "/html/body/div/div[4]/iframe")
         driver.switch_to.frame(iframe)
-        continue_solving = True 
-        while continue_solving:
+
+        resolve = True
+        while resolve:
             to_click_tiles = []
             for coords in coor_dict:
                 to_click = coor_dict[coords]
                 x, y = coords
                 if to_click:
                     to_click_tiles.append((x,y)) # collect all the tiles to click in this round
-            new_files = click_tiles(driver, to_click_tiles)
-            if new_files:
+
+            try:
+                new_files = click_tiles(driver, to_click_tiles)
                 for (x,y) in coor_dict:
                     coor_dict[(x,y)] = False
-                handle_queue(new_files, coor_dict, target)
-            else:
+                count = handle_queue(new_files, coor_dict, target)
+                print ("Found " + str(count) + " new files!")
+
+                if count == 0:
+                    resolve = False
+                    button = driver.find_element(By.ID, "recaptcha-verify-button")
+                    print ("Click on " + button.text)
+                    button.click()
+                    wait_between(0.2, 0.5)
+            except Exception as e:
                 continue_solving = False
-        driver.find_element(By.ID, "recaptcha-verify-button").click()
-        wait_between(0.2, 0.5)
-        if driver.find_element_by_class_name("rc-imageselect-incorrect-response").get_attribute("style") != "display: none":
-            continue_solving = True
-        else:
-            print ("Think I'm done here!")
+                print(e)
+
+        if driver.find_element_by_class_name("rc-imageselect-incorrect-response").get_attribute("style") != "display: none;":
+            print ("Please check the new images!")
 
 ############################## AUDIO RECAPTCHA ##############################
 def test_all(start=100, end=101):
@@ -336,6 +349,8 @@ def main():
     
     if ATTACK_IMAGES:
         image_recaptcha(driver)
+        driver.switch_to.default_content()
+        print (driver.find_element(By.ID, "g-recaptcha-response").get_attribute("value"))
 
     elif ATTACK_AUDIO:
         WebDriverWait(driver, 30).until(EC.presence_of_element_located((By.ID, "recaptcha-audio-button")))
