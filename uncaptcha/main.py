@@ -76,7 +76,7 @@ def should_click_image(img, x, y, store, classifier):
     logging.debug(ans)
 
     if classifier.lower() == "crosswalks":
-        if "Zebra Crossing" in ans or "Intersection" in ans or "Road" in ans or "Path" in ans or "Street" in ans:
+        if "Zebra Crossing" in ans or "Intersection" in ans or "Path" in ans:
             store[(x,y)] = True
             logging.debug(store)
             return True
@@ -144,7 +144,7 @@ def cleanup():
         for file in files:
             os.remove(os.path.join(root, file))
 
-def image_recaptcha(driver):
+def image_recaptcha(driver, iframe):
     continue_solving = True
     while continue_solving:
         cleanup()
@@ -198,6 +198,7 @@ def image_recaptcha(driver):
         iframe = driver.find_element(By.XPATH, "/html/body/div/div[4]/iframe")
         driver.switch_to.frame(iframe)
 
+        error_elem = driver.find_element_by_class_name("rc-imageselect-error-select-more")
         resolve = True
         while resolve:
             to_click_tiles = []
@@ -216,16 +217,26 @@ def image_recaptcha(driver):
 
                 if count == 0:
                     resolve = False
+                    if error_elem.get_attribute("style") != "display: none;":
+                        resolve = True
+                        to_click_tiles.append((1,1))
+                        print(error_elem.text)
                     button = driver.find_element(By.ID, "recaptcha-verify-button")
                     print ("Click on " + button.text)
                     button.click()
                     wait_between(0.2, 0.5)
             except Exception as e:
-                continue_solving = False
+                resolve = False
                 print(e)
 
-        if driver.find_element_by_class_name("rc-imageselect-incorrect-response").get_attribute("style") != "display: none;":
-            print ("Please check the new images!")
+        driver.switch_to.default_content()
+        captcha_response = driver.find_element(By.ID, "g-recaptcha-response")
+        if captcha_response.get_attribute("value") != "":
+            print(captcha_response)
+            continue_solving = False
+
+        driver.switch_to.frame(iframe)
+
 
 ############################## AUDIO RECAPTCHA ##############################
 def test_all(start=100, end=101):
@@ -348,9 +359,7 @@ def main():
     WebDriverWait(driver, 30).until(EC.presence_of_element_located((By.ID, "rc-imageselect")))
     
     if ATTACK_IMAGES:
-        image_recaptcha(driver)
-        driver.switch_to.default_content()
-        print (driver.find_element(By.ID, "g-recaptcha-response").get_attribute("value"))
+        image_recaptcha(driver, iframe)
 
     elif ATTACK_AUDIO:
         WebDriverWait(driver, 30).until(EC.presence_of_element_located((By.ID, "recaptcha-audio-button")))
