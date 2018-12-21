@@ -219,7 +219,7 @@ def image_recaptcha(driver, iframe):
                     resolve = False
                     if error_elem.get_attribute("style") != "display: none;":
                         resolve = True
-                        to_click_tiles.append((1,1))
+                        coor_dict.append((1, 1), True)
                         print(error_elem.text)
                     button = driver.find_element(By.ID, "recaptcha-verify-button")
                     print ("Click on " + button.text)
@@ -231,8 +231,9 @@ def image_recaptcha(driver, iframe):
 
         driver.switch_to.default_content()
         captcha_response = driver.find_element(By.ID, "g-recaptcha-response")
-        if captcha_response.get_attribute("value") != "":
-            print(captcha_response)
+        captcha_response_value = captcha_response.get_attribute("value")
+        if captcha_response_value != "":
+            print(captcha_response_value)
             continue_solving = False
 
         driver.switch_to.frame(iframe)
