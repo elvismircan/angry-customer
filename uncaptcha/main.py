@@ -76,6 +76,10 @@ def should_click_image(img, x, y, store, classifier):
     ans = image.predict(os.path.abspath(img))
     logging.debug(ans)
 
+    if classifier.lower() == "store front":
+        if "Housing" in ans or "Building" in ans or "Architecture" in ans or "City" in ans or "Town" in ans or "Urban" in ans:
+            return store_in_dict(img, x, y, store, classifier)
+
     if classifier.lower() == "crosswalks":
         if "Zebra Crossing" in ans or "Intersection" in ans or "Path" in ans:
             return store_in_dict(img, x, y, store, classifier)
@@ -329,8 +333,13 @@ def main():
     chrome_options = webdriver.ChromeOptions()
     chrome_options.add_argument("--disable-bundled-ppapi-flash")
     #chrome_options.add_argument("--incognito")
-    chrome_options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/71.0.3578.98 Safari/537.36")
     chrome_options.add_argument("--disable-plugins-discovery")
+
+    #avoid detection of automated control
+    chrome_options.add_experimental_option('excludeSwitches', ['test-type', 'enable-automation', 'load-extension'])
+    chrome_options.add_argument("user-data-dir=d:\\tmp\\customer")
+    chrome_options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/71.0.3578.98 Safari/537.36")
+
 
     if CHROMEDRIVER_PATH:
         driver = webdriver.Chrome(CHROMEDRIVER_PATH, chrome_options=chrome_options)
@@ -346,6 +355,11 @@ def main():
 
     logging.info("[*] Starting attack on Amass's recaptcha")
     driver.get("https://www.amass.ro/contact.html")
+
+    #avoid detection of automated control
+    driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => false,})")
+    wait_between(1, 4)
+
     logging.debug("[*] Filling out Contact form")
     fill_out_profile(driver)
     WebDriverWait(driver, 2000).until(EC.visibility_of_element_located((By.XPATH, "//*[@id=\"frmContact\"]/div[2]/div[1]/div/div/iframe")))
