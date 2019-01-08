@@ -70,6 +70,7 @@ def wait_between(a, b):
 ############################## IMAGE RECAPTCHA ##############################
 CAPTCHA_PATH = "images\\captchas"
 TASK_PATH = "images\\taskg"
+CLASSIFIER_PATH = "images\\classifier"
 def should_click_image(img, x, y, store, classifier):
     # ans = ris.parse_clarifai(ris.clarifai(img))
     ans = image.predict(os.path.abspath(img))
@@ -77,20 +78,24 @@ def should_click_image(img, x, y, store, classifier):
 
     if classifier.lower() == "crosswalks":
         if "Zebra Crossing" in ans or "Intersection" in ans or "Path" in ans:
-            store[(x,y)] = True
-            logging.debug(store)
-            return True
+            return store_in_dict(img, x, y, store, classifier)
 
     words = classifier.split(' ')
     for elem in ans:
         for word in words:
             if len(word) > 2 and (word.lower() in elem.lower() or elem.lower() in word.lower()):
-                store[(x,y)] = True
-                logging.debug(store)
-                return True
+                return store_in_dict(img, x, y, store, classifier)
 
     return False
 
+def store_in_dict(img, x, y, store, classifier):
+    store[(x,y)] = True
+    logging.debug(store)
+
+    path = CLASSIFIER_PATH+"\\"+classifier.replace(' ', '_')
+    os.makedirs(path, exist_ok=True)
+    os.system("mv "+img+" "+path+"\\"+str(uuid.uuid1())+".jpeg")
+    return True
 
 def trigger_click(element):
     if element.get_attribute("style") != "display: none":
@@ -318,19 +323,17 @@ def main():
     logging.basicConfig(stream=sys.stderr, level=LEVEL)
     chrome_options = webdriver.ChromeOptions()
     chrome_options.add_argument("--disable-bundled-ppapi-flash")
-    chrome_options.add_argument("--incognito")
-    chrome_options.add_argument("user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/59.0.3071.109 Safari/537.36")
+    #chrome_options.add_argument("--incognito")
+    chrome_options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/71.0.3578.98 Safari/537.36")
     chrome_options.add_argument("--disable-plugins-discovery")
 
-    
     if CHROMEDRIVER_PATH:
         driver = webdriver.Chrome(CHROMEDRIVER_PATH, chrome_options=chrome_options)
-        logging.debug("[*] Starting custom chromedriver %s" % CHROMEDRIVER_PATH) 
+        logging.debug("[*] Starting custom chromedriver %s" % CHROMEDRIVER_PATH)
     else:
         driver = webdriver.Chrome(chrome_options=chrome_options)
         logging.debug("[*] Starting system default chromedriver")
-    
-    driver = webdriver.Chrome(chrome_options=chrome_options)
+
     driver.delete_all_cookies()
     agent = driver.execute_script("return navigator.userAgent")
     logging.debug("[*] Cookies cleared")
@@ -340,7 +343,7 @@ def main():
     driver.get("https://www.amass.ro/contact.html")
     logging.debug("[*] Filling out Contact form")
     fill_out_profile(driver)
-    WebDriverWait(driver, 60).until(EC.visibility_of_element_located((By.XPATH, "//*[@id=\"frmContact\"]/div[2]/div[1]/div/div/iframe")))
+    WebDriverWait(driver, 2000).until(EC.visibility_of_element_located((By.XPATH, "//*[@id=\"frmContact\"]/div[2]/div[1]/div/div/iframe")))
     iframeSwitch = driver.find_element(By.XPATH, "//*[@id=\"frmContact\"]/div[2]/div[1]/div/div/iframe")
 
     driver.delete_all_cookies()
