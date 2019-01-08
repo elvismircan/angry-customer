@@ -300,7 +300,7 @@ def type_like_human(driver, element, string):
         wait_between(0.0, 0.1)
     wait_between(0.5, 2)
 
-type_style = type_like_bot
+type_style = type_like_human
 
 def fill_out_profile(driver):
     fake = Faker()
@@ -317,6 +317,11 @@ def fill_out_profile(driver):
     type_style(driver, "telefon", fake.safe_e164(region_code="GB"))
     type_style(driver, "email", email)
     type_style(driver, "mesaj", "#ciaoless")
+
+    random_ip = str(random.randint(0, 255)) + "." + str(random.randint(0, 255)) + "." + str(random.randint(0, 255)) +"." + str(random.randint(0, 255))
+    ip = driver.find_element(By.ID, "ip")
+    driver.execute_script("arguments[0].value = '" + random_ip + "'", ip)
+    print(random_ip + "\n")
 
 ##############################  MAIN  ##############################
 def main():
@@ -400,5 +405,9 @@ def main():
                 guess_again = False
   
     input("")
+
+    driver.find_element(By.ID, "send-message").click()
+    wait_between(0.5, 5)
+
 main()
 # test_all()
