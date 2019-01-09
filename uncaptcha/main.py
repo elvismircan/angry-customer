@@ -75,6 +75,10 @@ def should_click_image(img, x, y, store, classifier):
     ans = image.predict(os.path.abspath(img))
     logging.debug(ans)
 
+    if classifier.lower() == "chimneys":
+        if "Roof" in ans:
+            return store_in_dict(img, x, y, store, classifier)
+
     if classifier.lower() == "stairs":
         if "Staircase" in ans:
             return store_in_dict(img, x, y, store, classifier)
