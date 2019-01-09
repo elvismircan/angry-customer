@@ -6,8 +6,7 @@ bs4==0.0.1
 clarifai==2.5.0
 SpeechRecognition==3.6.3
 sphinx==1.5.5
-faker==0.7.10
-faker-e164==0.1.0
+faker==1.0.1
 scipy==1.0.0
 google-api-python-client==1.6.4
 ffmpeg-python==0.1.17

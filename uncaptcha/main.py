@@ -6,7 +6,6 @@ from bs4 import BeautifulSoup
 from random import uniform
 from time import sleep
 from faker import Faker
-from faker_e164.providers import E164Provider
 from scipy.io import wavfile
 
 import sys
@@ -307,22 +306,20 @@ def type_like_human(driver, element, string):
 type_style = type_like_human
 
 def fill_out_profile(driver):
-    fake = Faker()
-    fake.add_provider(E164Provider)
+    fake = Faker("de_DE")
 
     user = fake.simple_profile()
-    username = user["username"]
-    email = user["mail"].replace("@", str(random.randint(10000, 99999))+"@")
+    email = user["mail"].replace("@", str(random.randint(0, 40))+"@")
 
     wait_between(1, 2)
     type_style(driver, "nume", fake.first_name())
     type_style(driver, "prenume", fake.last_name())
-    type_style(driver, "oras", "Vaslui")
-    type_style(driver, "telefon", fake.safe_e164(region_code="GB"))
+    type_style(driver, "oras", fake.city())
+    type_style(driver, "telefon", fake.phone_number())
     type_style(driver, "email", email)
-    type_style(driver, "mesaj", "#ciaoless")
+    type_like_bot(driver, "mesaj", fake.text())
 
-    random_ip = str(random.randint(0, 255)) + "." + str(random.randint(0, 255)) + "." + str(random.randint(0, 255)) +"." + str(random.randint(0, 255))
+    random_ip = fake.ipv4_public()
     ip = driver.find_element(By.ID, "ip")
     driver.execute_script("arguments[0].value = '" + random_ip + "'", ip)
     print(random_ip + "\n")
