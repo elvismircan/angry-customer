@@ -214,7 +214,6 @@ def image_recaptcha(driver, iframe):
         iframe = driver.find_element(By.XPATH, "/html/body/div/div[4]/iframe")
         driver.switch_to.frame(iframe)
 
-        error_elem = driver.find_element_by_class_name("rc-imageselect-error-select-more")
         resolve = True
         while resolve:
             to_click_tiles = []
@@ -233,14 +232,40 @@ def image_recaptcha(driver, iframe):
 
                 if count == 0:
                     resolve = False
+
+                    #click on button
+                    error_elem = driver.find_element_by_class_name("rc-imageselect-error-select-more")
+                    if error_elem.get_attribute("style") == "display: none;":
+                        button = driver.find_element(By.ID, "recaptcha-verify-button")
+                        print ("Click on " + button.text)
+                        button.click()
+                        wait_between(0.2, 0.5)
+
+                    #verify if more items need to be selected and select more if needed
                     if error_elem.get_attribute("style") != "display: none;":
                         resolve = True
-                        coor_dict.append((1, 1), True)
+                        idx = 0
+
+                        #we click more items so that we can go next
+                        new_coor_dict = {}
+                        for i in range(max_height):
+                            for j in range(max_width):
+                                if idx < 2:
+                                    try:
+                                        print(coor_dict[(i+1, j+1)])
+                                    except:
+                                        new_coor_dict[(i+1, j+1)] = True
+                                        idx += 1
+
+                        #we do not want to click again on already clicked items so that we'll reinitialize list with new items
+                        coor_dict = new_coor_dict
                         print(error_elem.text)
-                    button = driver.find_element(By.ID, "recaptcha-verify-button")
-                    print ("Click on " + button.text)
-                    button.click()
-                    wait_between(0.2, 0.5)
+
+                        #click on button
+                        button = driver.find_element(By.ID, "recaptcha-verify-button")
+                        print ("Click on " + button.text)
+                        button.click()
+                        wait_between(0.2, 0.5)
             except Exception as e:
                 resolve = False
                 print(e)
@@ -311,7 +336,7 @@ def type_like_human(driver, element, string):
         wait_between(0.0, 0.1)
     wait_between(0.5, 2)
 
-type_style = type_like_human
+type_style = type_like_bot
 
 def fill_out_profile(driver):
     fake = Faker("de_DE")
