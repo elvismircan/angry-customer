@@ -230,7 +230,7 @@ def image_recaptcha(driver, iframe):
                 for (x,y) in coor_dict:
                     coor_dict[(x,y)] = False
                 count = handle_queue(new_files, coor_dict, target)
-                print ("Found " + str(count) + " new files!")
+                logger.debug ("Found " + str(count) + " new files!")
 
                 if count == 0:
                     resolve = False
@@ -239,7 +239,7 @@ def image_recaptcha(driver, iframe):
                     error_elem = driver.find_element_by_class_name("rc-imageselect-error-select-more")
                     if error_elem.get_attribute("style") == "display: none;":
                         button = driver.find_element(By.ID, "recaptcha-verify-button")
-                        print ("Click on " + button.text)
+                        logger.debug ("Click on " + button.text)
                         button.click()
                         wait_between(0.2, 0.5)
 
@@ -261,11 +261,11 @@ def image_recaptcha(driver, iframe):
 
                         #we do not want to click again on already clicked items so that we'll reinitialize list with new items
                         coor_dict = new_coor_dict
-                        print(error_elem.text)
+                        logger.debug(error_elem.text)
 
                         #click on button
                         button = driver.find_element(By.ID, "recaptcha-verify-button")
-                        print ("Click on " + button.text)
+                        logger.debug ("Click on " + button.text)
                         button.click()
                         wait_between(0.2, 0.5)
             except Exception as e:
