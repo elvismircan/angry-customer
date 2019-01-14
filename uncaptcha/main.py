@@ -76,7 +76,6 @@ CLASSIFIER_PATH = "images\\classifier"
 def should_click_image(img, x, y, store, classifier):
     # ans = ris.parse_clarifai(ris.clarifai(img))
     ans = image.predict(os.path.abspath(img))
-    logger.debug(ans)
 
     if classifier.lower() == "chimneys":
         if "Roof" in ans:

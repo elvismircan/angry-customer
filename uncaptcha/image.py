@@ -13,14 +13,15 @@ def predict(imageFile):
     with open(imageFile, 'rb') as image:
         response = client.detect_labels(Image={'Bytes': image.read()})
 
-    logger.debug('Detected labels in ' + imageFile)
+    log_arr = list()
+    log_arr.append(imageFile)
 
     ret_arr = list()
     for label in response['Labels']:
         ret_arr.append(label["Name"])
-        logger.debug(label['Name'] + ' : ' + str(label['Confidence']))
+        log_arr.append(label["Name"] + ":" + str(label['Confidence']))
 
-    logger.debug('Done image classification\n')
+    logger.debug(log_arr)
 
     return ret_arr;
 
