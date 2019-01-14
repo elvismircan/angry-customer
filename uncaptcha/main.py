@@ -121,14 +121,14 @@ def click_tiles(driver, coords):
     orig_srcs, new_srcs = {}, {}
     is_click = False
     for (x, y) in coords:
-        print("[*] Going to click {} {}".format(x,y))
+        logger.debug("[*] Going to click {} {}".format(x,y))
         tile = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.XPATH, "//*[@id=\"rc-imageselect-target\"]/table/tbody/tr[{}]/td[{}]".format(x, y))))
         orig_srcs[(x, y)] = driver.find_element(By.XPATH, "//*[@id=\"rc-imageselect-target\"]/table/tbody/tr[{}]/td[{}]/div/div[1]/img".format(x,y)).get_attribute("src")
         new_srcs[(x, y)] = orig_srcs[(x, y)] # to check if image has changed
         tile.click()
         wait_between(0.1, 0.5)
 
-    logger.debug("[*] Downloading new inbound image...")
+    logger.debug("Downloading new inbound image...")
     new_files = {}
     for (x, y) in orig_srcs:
 
@@ -175,7 +175,7 @@ def image_recaptcha(driver, iframe):
         if not target: # find the target
             target = soup.findAll("div", {"class": "rc-imageselect-desc-no-canonical"})
         target = target[0].findAll("strong")[0].get_text()
-        print ("Classifier is: " + target);
+        logger.debug ("Classifier is: " + target);
 
         #  Compute shape of captcha & target  #
         trs = table.findAll("tr")
@@ -276,7 +276,7 @@ def image_recaptcha(driver, iframe):
         captcha_response = driver.find_element(By.ID, "g-recaptcha-response")
         captcha_response_value = captcha_response.get_attribute("value")
         if captcha_response_value != "":
-            print(captcha_response_value)
+            logger.debug("Captcha Response:" + captcha_response_value)
             continue_solving = False
 
         driver.switch_to.frame(iframe)
