@@ -75,7 +75,7 @@ TASK_PATH = "images\\taskg"
 CLASSIFIER_PATH = "images\\classifier"
 def should_click_image(img, x, y, store, classifier):
     # ans = ris.parse_clarifai(ris.clarifai(img))
-    ans = image.predict(os.path.abspath(img))
+    ans = image.predict(os.path.abspath(img), x, y)
 
     if classifier.lower() == "chimneys":
         if "Roof" in ans:
@@ -204,8 +204,6 @@ def image_recaptcha(driver, iframe):
             y = math.floor(idx % max_width + 1)
             to_solve_queue[(x, y)] = f
             idx += 1
-
-        logger.debug(to_solve_queue)
 
         coor_dict = {}
         handle_queue(to_solve_queue, coor_dict, target)  # multithread builds out where to click

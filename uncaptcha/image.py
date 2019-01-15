@@ -6,7 +6,7 @@ logging.config.fileConfig('logging.conf')
 # create logger
 logger = logging.getLogger('file')
 
-def predict(imageFile):
+def predict(imageFile, x, y):
 
     client=boto3.session.Session().client('rekognition')
 
@@ -14,13 +14,13 @@ def predict(imageFile):
         response = client.detect_labels(Image={'Bytes': image.read()})
 
     log_arr = list()
-    log_arr.append(imageFile)
+    log_arr.append((imageFile + " ({}, {})").format(x , y))
 
     ret_arr = list()
     for label in response['Labels']:
+        log_arr.append(label["Name"] + ":" + str(label['Confidence']))
         if label['Confidence'] > 90:
             ret_arr.append(label["Name"])
-            log_arr.append(label["Name"] + ":" + str(label['Confidence']))
 
     logger.debug(log_arr)
 
