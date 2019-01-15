@@ -18,8 +18,9 @@ def predict(imageFile):
 
     ret_arr = list()
     for label in response['Labels']:
-        ret_arr.append(label["Name"])
-        log_arr.append(label["Name"] + ":" + str(label['Confidence']))
+        if label['Confidence'] > 90:
+            ret_arr.append(label["Name"])
+            log_arr.append(label["Name"] + ":" + str(label['Confidence']))
 
     logger.debug(log_arr)
 

