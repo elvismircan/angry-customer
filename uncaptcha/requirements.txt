@@ -1,7 +1,7 @@
 selenium==2.53.6
 image-slicer==0.1.1
 requests==2.13
-urllib3==1.24.1
+urllib3==1.24.2
 bs4==0.0.1
 clarifai==2.5.0
 SpeechRecognition==3.6.3
