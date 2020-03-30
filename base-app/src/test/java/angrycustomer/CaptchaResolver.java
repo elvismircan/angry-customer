@@ -1,3 +1,5 @@
+package angrycustomer;
+
 import java.io.*;
 import java.net.URL;
 import java.nio.file.Files;
@@ -7,13 +9,21 @@ import java.nio.file.StandardCopyOption;
 
 public class CaptchaResolver {
 
-    public String readCaptcha(String url) {
-        try(InputStream in = new URL(url).openStream()) {
-            Path path = Paths.get("../base-tool/real_captcha_images/captcha.png");
+    public void downloadCaptcha(String url, String fileName) {
+        try (InputStream in = new URL(url).openStream()) {
+            Path path = Paths.get("../base-tool/real_captcha_images/" + fileName);
             Files.copy(in, path, StandardCopyOption.REPLACE_EXISTING);
 
-            String result = runCaptchaTool();
-            return result;
+        } catch (Exception e) {
+
+        }
+    }
+
+    public String readCaptcha(String url, String fileName) {
+        downloadCaptcha(url, fileName);
+
+        try {
+            return runCaptchaTool();
 
         } catch (Exception e) {
             return null;

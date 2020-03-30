@@ -379,18 +379,29 @@ def fill_out_offer(driver):
 
     fill_out_ip(driver, fake)
 
-
-##############################  MAIN  ##############################
-def main():
+def init_driver(idx):
     chrome_options = webdriver.ChromeOptions()
     chrome_options.add_argument("--disable-bundled-ppapi-flash")
     #chrome_options.add_argument("--incognito")
     chrome_options.add_argument("--disable-plugins-discovery")
+    chrome_options.add_argument("--no-sandbox")
 
     #avoid detection of automated control
     chrome_options.add_experimental_option('excludeSwitches', ['test-type', 'enable-automation', 'load-extension'])
-    chrome_options.add_argument("user-data-dir=d:\\tmp\\customer")
+    chrome_options.add_argument("user-data-dir=d:\\tmp\\customer" + str(idx))
     chrome_options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/71.0.3578.98 Safari/537.36")
+
+    if CHROMEDRIVER_PATH:
+        driver = webdriver.Chrome(CHROMEDRIVER_PATH, chrome_options=chrome_options)
+        logger.debug("Starting custom chromedriver %s" % CHROMEDRIVER_PATH)
+    else:
+        driver = webdriver.Chrome(chrome_options=chrome_options)
+        logger.debug("Starting system default chromedriver")
+
+    return driver
+
+
+def main(idx):
 
     #Initiate attack in an infinite loop
     submitted = 0
@@ -401,12 +412,7 @@ def main():
             success = True
             start_time = datetime.datetime.now()
 
-            if CHROMEDRIVER_PATH:
-                driver = webdriver.Chrome(CHROMEDRIVER_PATH, chrome_options=chrome_options)
-                logger.debug("Starting custom chromedriver %s" % CHROMEDRIVER_PATH)
-            else:
-                driver = webdriver.Chrome(chrome_options=chrome_options)
-                logger.debug("Starting system default chromedriver")
+            driver = init_driver(idx)
 
             agent = driver.execute_script("return navigator.userAgent")
             logger.debug("Starting driver with user agent %s" % agent)
@@ -508,5 +514,15 @@ def main():
                 avg += delta.total_seconds()
                 logger.debug("--- Average time is " + str(avg / submitted) + " seconds!")
 
-main()
+main(1)
 # test_all()
+
+
+# if __name__ == '__main__':
+#
+#     submitted = 0
+#     avg = 0
+#
+#     for i in range(5):
+#         t = threading.Thread(target=main, args=[i, submitted, avg])
+#         t.start()

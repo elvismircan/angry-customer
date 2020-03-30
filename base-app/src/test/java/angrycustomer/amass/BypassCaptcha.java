@@ -1,85 +1,29 @@
-import org.apache.commons.lang3.RandomStringUtils;
-import org.junit.After;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
+package angrycustomer.amass;
+
+import angrycustomer.BaseToolTrain;
+import angrycustomer.QuizzResolver;
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
 import org.openqa.selenium.By;
 import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
-import org.openqa.selenium.chrome.ChromeDriver;
-import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.Select;
 import org.openqa.selenium.support.ui.Wait;
 import org.openqa.selenium.support.ui.WebDriverWait;
 
-import javax.script.ScriptException;
-import java.io.File;
-import java.io.IOException;
-import java.time.Duration;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
 
-import static org.junit.Assert.assertTrue;
+import static angrycustomer.Randomizer.*;
 
-@RunWith(Parameterized.class)
-public class BypassCaptcha {
+public class BypassCaptcha extends BaseToolTrain {
 
-    private int runIndex;
-
-    private static WebDriver driver;
-
-    private static CaptchaResolver captchaResolver;
-
-    private static QuizzResolver quizzResolver;
+    private QuizzResolver quizzResolver;
 
     public BypassCaptcha(int runIndex) {
-        this.runIndex = runIndex;
-    }
+        super(runIndex);
 
-    @Parameterized.Parameters
-    public static Collection data() {
-        int length = 1000;
-        List<Integer> index = new ArrayList<>();
-        for(int i = 0; i < length; i++ ) {
-            index.add(i);
-        }
-
-        return index;
-    }
-
-    @BeforeClass
-    public static void setUp() {
-
-        ChromeOptions options = new ChromeOptions();
-        options.addArguments("start-maximized");
-        options.addArguments("disable-infobars");
-        options.addArguments("--headless");
-//        options.addArguments("incognito");
-        options.addExtensions(new File("src/test/resources/captcha-clicker.crx"));
-
-        System.setProperty("webdriver.chrome.driver", "src/test/resources/chromedriver.exe");
-
-        driver = new ChromeDriver(options);
-        captchaResolver = new CaptchaResolver();
         quizzResolver = new QuizzResolver();
-    }
-
-    @After
-    public void after() throws InterruptedException {
-        Thread.sleep(3000);
-    }
-
-//    @Test
-    public void testReadCaptcha() throws IOException {
-        String result = captchaResolver.runCaptchaTool();
-        System.out.println(result);
-        assertTrue(!result.isEmpty());
     }
 
     @Test
@@ -109,17 +53,7 @@ public class BypassCaptcha {
         WebElement message = driver.findElement(By.id("mesaj"));
         message.sendKeys("#ciaoless");
 
-//        WebElement file = driver.findElement(By.name("file-784"));
-//        file.sendKeys("d:\\Projects_Personal\\angry-customer\\base-app\\special.zip");
-
-//        WebElement accept = driver.findElement(By.name("acceptance-172"));
-//        ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView();", accept);
-//        accept.click();
-
         Wait<WebDriver> wait = new WebDriverWait(driver, 5000);
-
-//        ((JavascriptExecutor) driver).executeScript("return document.getElementsByClassName('g-recaptcha')[0].remove();");
-//        wait.until(ExpectedConditions.numberOfElementsToBe(By.className(".g-recaptcha"), 0));
 
         Thread.sleep(4000);
 
@@ -145,7 +79,7 @@ public class BypassCaptcha {
         }
     }
 
-//    @Test
+    @Test
     public void testBypassQuote() throws Exception {
         Instant startTime = Instant.now();
 
@@ -183,14 +117,9 @@ public class BypassCaptcha {
         WebElement message = driver.findElement(By.name("textarea-218"));
         message.sendKeys("#blank");
 
-        WebElement file = driver.findElement(By.name("file-784"));
-//            file.sendKeys("d:\\Projects_Personal\\angry-customer\\base-app\\special.zip");
-
         WebElement quiz = driver.findElement(By.cssSelector(".wpcf7-quiz"));
-        quiz.sendKeys(solveQuestion());
-
-//            WebElement captcha = driver.findElement(By.name("captcha-926"));
-//            captcha.sendKeys(readCaptcha());
+        String question = driver.findElement(By.cssSelector(".wpcf7-quiz-label")).getText();
+        quiz.sendKeys(quizzResolver.solveQuizCalculation(question));
 
         WebElement accept = driver.findElement(By.name("acceptance-611"));
         ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView();", accept);
@@ -216,43 +145,5 @@ public class BypassCaptcha {
         } else {
             System.out.println("- " + out);
         }
-    }
-
-    private String getTimeDifference(Instant start, Instant end) {
-        Duration timeElapsed = Duration.between(start, end);
-        return timeElapsed.toMinutes() + ":" + timeElapsed.getSeconds();
-    }
-
-    private String readCaptcha() {
-        WebElement img = driver.findElement(By.className("wpcf7-captcha-captcha-926"));
-        String src = img.getAttribute("src");
-
-        return captchaResolver.readCaptcha(src);
-    }
-
-    private String solveQuestion() throws ScriptException {
-        String question = driver.findElement(By.cssSelector(".wpcf7-quiz-label")).getText();
-        return quizzResolver.solveQuizCalculation(question);
-    }
-
-
-    public String randomNameGenerator() {
-        return RandomStringUtils.random(7, true, false);
-    }
-
-    public String randomNumber() {
-        return "0745" + RandomStringUtils.randomNumeric(6);
-    }
-
-    public String randomIp() {
-        return RandomStringUtils.randomNumeric(3) + "." +
-                RandomStringUtils.randomNumeric(3) + "." +
-                RandomStringUtils.randomNumeric(3) + "." +
-                RandomStringUtils.randomNumeric(3);
-    }
-
-    @AfterClass
-    public static void tearDown() throws Exception {
-        driver.quit();
     }
 }
