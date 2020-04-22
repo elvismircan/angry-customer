@@ -75,7 +75,7 @@ public class BaseToolTrain {
     @Test
     public void getImagesToTrainModel() throws Exception {
         driver.get("http://www.acumconstruct.ro/incalzire-in-pardoseala-cerere-de-oferta");
-        readCaptcha("__code__", "captcha" + runIndex + ".png");
+        downloadCaptchaImage("__code__", "captcha" + runIndex + ".png");
     }
 
     @Test
@@ -85,11 +85,19 @@ public class BaseToolTrain {
         assertTrue(!result.isEmpty());
     }
 
-    protected String readCaptcha(String element, String fileName) {
+    private String getImageSrc(String element) {
         WebElement img = driver.findElement(By.id(element));
-        String src = img.getAttribute("src");
+        return img.getAttribute("src");
+    }
 
+    protected String readCaptcha(String element, String fileName) {
+        String src = getImageSrc(element);
         return captchaResolver.readCaptcha(src, fileName);
+    }
+
+    protected void downloadCaptchaImage(String element, String fileName) {
+        String src = getImageSrc(element);
+        captchaResolver.downloadCaptcha(src, fileName);
     }
 
     protected String getTimeDifference(Instant start, Instant end) {
