@@ -52,7 +52,7 @@ public class BaseToolTrain {
         ChromeOptions options = new ChromeOptions();
         options.addArguments("start-maximized");
         options.addArguments("disable-infobars");
-//        options.addArguments("--headless");
+        options.addArguments("--headless");
         options.addArguments("incognito");
         options.addExtensions(new File("src/test/resources/captcha-clicker.crx"));
 
@@ -75,7 +75,7 @@ public class BaseToolTrain {
     @Test
     public void getImagesToTrainModel() throws Exception {
         driver.get("http://www.acumconstruct.ro/incalzire-in-pardoseala-cerere-de-oferta");
-        downloadCaptchaImage("__code__", "captcha" + runIndex + ".png");
+        downloadCaptchaImage("__code__", "captcha" + System.currentTimeMillis() + ".png");
     }
 
     @Test
