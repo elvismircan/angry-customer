@@ -53,10 +53,11 @@ public class BaseToolTrain {
         options.addArguments("start-maximized");
         options.addArguments("disable-infobars");
         options.addArguments("--headless");
-        options.addArguments("incognito");
+        options.addArguments("--incognito");
         options.addExtensions(new File("src/test/resources/captcha-clicker.crx"));
 
         System.setProperty("webdriver.chrome.driver", "src/test/resources/chromedriver.exe");
+//        System.setProperty("webdriver.chrome.driver", "/usr/local/bin/chromedriver");
 
         driver = new ChromeDriver(options);
         captchaResolver = new CaptchaResolver();
